@@ -28,7 +28,7 @@
 
   <script>
     // ==========================
-    // FONTE DOS DADOS (planilhas publicadas em CSV)
+    // FONTE DOS DADOS (opcional: planilhas publicadas em CSV)
     // ==========================
     const CSV_URLS = {
       PP: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQi36jUxlUkQBmzYm7DpFG3HH9GQoiYbGdybwxf8mnYPjY3EDgrNnpCqu4BN9B7censF_2xcpH7WxZq/pub?gid=0&single=true&output=csv",
@@ -37,11 +37,15 @@
     };
 
     // ==========================
-    // DADOS (carregados dinamicamente das planilhas)
+    // DADOS (carregados dinamicamente das planilhas ou localmente)
     // ==========================
     const MISSOES = { PP:{}, PC:{}, INVA:{} };
     const FASES = ["PP","PPR","PC","INVA","PLA"]; // PPR/PLA seguem fixos
     const MISSOES_POR_FASE = { PP:[], PPR:[], PC:[], INVA:[], PLA:[] };
+
+    // Listas usadas na tela de Informações do voo
+    const AERONAVES = ["PR-FLE","PR-FLD","PR-FLN","PT-MJF","PR-MGX","PR-FLM"];
+    const TIPOS_VOO = ["Local","Navegação"];
 
     // Mapeamento de colunas tolerante a variações de nomes/casos/acentos
     const COLMAP = {
@@ -65,16 +69,39 @@
       voo: { tipoVoo:"Local", aeronave:"", local:{}, navegacao:{} },
       clockZulu: "--:--",
       checkoutTexto: "",
-      _checkoutInit: false
+      _checkoutInit: false,
+      settings: { offline:true } // Modo offline padrão: sem fetch automático
     };
+
+    // ==========================
+    // Cache local para datasets (evita rede)
+    // ==========================
+    function saveDatasetsToCache(){
+      try{
+        const payload = { MISSOES, MISSOES_POR_FASE, ts: Date.now() };
+        localStorage.setItem('datasets_cache_v1', JSON.stringify(payload));
+      }catch(_){ /* ignore */ }
+    }
+    function restoreDatasetsFromCache(){
+      try{
+        const raw = localStorage.getItem('datasets_cache_v1');
+        if (!raw) return;
+        const obj = JSON.parse(raw);
+        if (obj?.MISSOES){ for (const k of ["PP","PC","INVA"]) MISSOES[k] = obj.MISSOES[k] || {}; }
+        if (obj?.MISSOES_POR_FASE){ for (const k of ["PP","PC","INVA"]) MISSOES_POR_FASE[k] = obj.MISSOES_POR_FASE[k] || []; }
+        for (const k of ["PP","PC","INVA"]) state.dadosCarregados[k] = (MISSOES_POR_FASE[k]||[]).length>0;
+      }catch(_){ /* ignore */ }
+    }
 
     // ==========================
     // CSV helpers (parser simples com suporte a aspas)
     // ==========================
     function normalizeHeader(s){
+      // Remoção segura de acentos (NFD + faixa \u0300-\u036f) e não alfanuméricos
       return String(s||"")
         .toLowerCase()
-        .normalize('NFD').replace(/\p{Diacritic}/gu,'')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g,'') // remove diacríticos
         .replace(/[^a-z0-9]/g,'');
     }
     function csvParse(text){
@@ -94,30 +121,10 @@
           field += c; i++; continue;
         }
       }
-      // último campo
       row.push(field); rows.push(row);
       return rows;
     }
-    function csvToObjects(text){
-      const rows = csvParse(text).filter(r=> r.length && r.some(x=>String(x).trim()!==''));
-      if (!rows.length) return [];
-      const headers = rows[0].map(normalizeHeader);
-      return rows.slice(1).map(r=>{
-        const o={};
-        headers.forEach((h,idx)=> o[h] = r[idx]??'');
-        return o;
-      });
-    }
-    function pick(obj, keys){ const out={}; keys.forEach(k=> out[k]=obj[k]); return out; }
-    function firstMatchKey(obj, names){
-      for (const k of Object.keys(obj)){
-        const nk = normalizeHeader(k);
-        if (names.includes(nk)) return k;
-      }
-      return null;
-    }
     function parseMissionsCSV(text){
-      // gera mapping flexível a partir do cabeçalho original
       const rowsRaw = csvParse(text);
       if (!rowsRaw.length) return { list:[], map:{} };
       const headerRow = rowsRaw[0];
@@ -146,7 +153,6 @@
         const prereq = (idx.prereq>=0? row[idx.prereq]: '').trim();
         const registro = (idx.registro>=0? row[idx.registro]: '').trim();
         const competencias = (idx.competencias>=0? row[idx.competencias]: '').trim();
-
         list.push(code);
         map[code] = {
           tempo_voo: tempo_voo || "-",
@@ -160,8 +166,10 @@
       return { list, map };
     }
 
+    // ==========================
+    // Fetch condicional (somente quando solicitado e em HTTPS)
+    // ==========================
     async function loadCSV(url){
-      // Tenta buscar direto; se bloquear por CORS, tenta fallback com proxy de leitura r.jina.ai
       const ctrl = new AbortController();
       const t = setTimeout(()=> ctrl.abort(), 12000);
       try{
@@ -171,32 +179,23 @@
         return await res.text();
       }catch(err){
         clearTimeout(t);
-        // fallback CORS-friendly
-        try{
-          const noScheme = url.replace(/^https?:\/\//i, '');
-          const proxyUrl = `https://r.jina.ai/http://${noScheme}`; // proxy faz o fetch server-side e habilita CORS
-          const res2 = await fetch(proxyUrl, { cache:'no-store' });
-          if (!res2.ok) throw new Error(`Falha proxy: ${res2.status}`);
-          return await res2.text();
-        }catch(err2){
-          throw new Error(`Erro ao carregar planilha (CORS/bloqueio): ${err2.message||err2}`);
-        }
+        const noScheme = url.replace(/^https?:\/\//i, '');
+        const proxyUrl = `https://r.jina.ai/http://${noScheme}`;
+        const res2 = await fetch(proxyUrl, { cache:'no-store' });
+        if (!res2.ok) throw new Error(`Falha proxy: ${res2.status}`);
+        return await res2.text();
       }
-    });
-      if (!res.ok) throw new Error(`Falha ao carregar: ${res.status}`);
-      return await res.text();
     }
     async function loadAllDatasets(){
       try{
-        // Carrega e converte PP / PC / INVA
         for (const fase of ["PP","PC","INVA"]){
           const text = await loadCSV(CSV_URLS[fase]);
           const { list, map } = parseMissionsCSV(text);
           MISSOES[fase] = map;
-          MISSOES_POR_FASE[fase] = list.length ? list : MISSOES_POR_FASE[fase];
+          MISSOES_POR_FASE[fase] = list;
           state.dadosCarregados[fase] = true;
         }
-        // Mantém listas para PPR/PLA como estavam (se desejar podemos derivar a partir de PP mais tarde)
+        saveDatasetsToCache();
         render();
       }catch(err){
         console.error(err);
@@ -224,11 +223,11 @@
     };
     const minutesToHHMM = (mins)=> `${pad2(Math.floor(mins/60))}:${pad2(mins%60)}`;
 
-    // Trunca em décimos de hora (0,1h = 6 min) e devolve string com vírgula
+    // Trunca em décimos de hora
     function minutesToDecimalTenthsStr(mins){
-      const tenths = Math.floor(mins / 6);         // 6 min = 0,1h (truncado)
-      const str = (tenths / 10).toFixed(1);        // "1.8"
-      return str.replace(".", ",");              // "1,8"
+      const tenths = Math.floor(mins / 6); // 6 min = 0,1h (truncado)
+      const str = (tenths / 10).toFixed(1);
+      return str.replace(".", ",");
     }
 
     // ==========================
@@ -296,7 +295,8 @@
 
     function semicolonSplitToItems(raw){
       const arr = Array.isArray(raw) ? raw : [String(raw||"")];
-      return arr.flatMap(s=> String(s).split(";")).map(x=>x.trim()).filter(Boolean);
+      return arr.flatMap(s=> String(s).split(";"))
+                .map(x=>x.trim()).filter(Boolean);
     }
     function datasetByFase(fase){
       if (fase==="PC") return MISSOES.PC;
@@ -366,7 +366,6 @@
       const todayISO = new Date().toISOString().slice(0,10);
       if (!state.form.dataVoo) state.form.dataVoo = todayISO;
 
-      // monta a lista de missões com base na fase atual; se vazio, usa placeholder
       const lista = MISSOES_POR_FASE[state.form.fase||"PP"];
       const missoes = (state.form.missoes||[]).map((m,idx)=>`
         <div class="p-3 rounded-2xl border shadow-sm bg-white flex items-center gap-3">
@@ -374,17 +373,35 @@
           <button class="ml-auto text-sm text-red-600" data-ev="remove-missao" data-idx="${idx}">Remover</button>
         </div>`).join("");
 
-      // status de carregamento
       const flags = state.dadosCarregados;
-      const status = !flags.PP && !flags.PC && !flags.INVA ?
-        '<div class="text-xs text-gray-500">Carregando planilhas…</div>' :
-        `<div class="text-xs ${flags.PP&&flags.PC&&flags.INVA?'text-green-600':'text-amber-600'}">Planilhas: PP ${flags.PP?'ok':'…'} • PC ${flags.PC?'ok':'…'} • INVA ${flags.INVA?'ok':'…'}</div>`;
+      const modo = state.settings.offline ? 'Modo offline (sem rede)' : 'Modo online';
+      const status = `<div class="text-xs ${flags.PP&&flags.PC&&flags.INVA?'text-green-600':'text-gray-500'}">${modo} — Planilhas: PP ${flags.PP?'ok':'…'} • PC ${flags.PC?'ok':'…'} • INVA ${flags.INVA?'ok':'…'}</div>`;
+      const err = state.erroCarregamento ? `<div class="text-xs text-red-600">${state.erroCarregamento}</div>` : '';
 
-      const err = state.erroCarregamento ? `<div class="text-xs text-red-600">${state.erroCarregamento}. Dica: abra pelo GitHub Pages (HTTPS) ou deixe que o app use o fallback interno.</div>` : '';
+      const controles = `
+        <div class="p-3 rounded-2xl border bg-white flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <div class="text-sm">Fonte dos dados</div>
+            <label class="text-xs flex items-center gap-2">
+              <input type="checkbox" ${state.settings.offline?'checked':''} data-ev="toggle-offline" /> Offline
+            </label>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button class="px-3 py-2 rounded-xl border" data-ev="sync-inet" ${state.settings.offline?'disabled':''}>Atualizar da Internet</button>
+            <button class="px-3 py-2 rounded-xl border" data-ev="import-csv" data-fase="PP">Importar CSV PP</button>
+            <button class="px-3 py-2 rounded-xl border" data-ev="import-csv" data-fase="PC">Importar CSV PC</button>
+            <button class="px-3 py-2 rounded-xl border" data-ev="import-csv" data-fase="INVA">Importar CSV INVA</button>
+            <button class="px-3 py-2 rounded-xl border" data-ev="limpar-cache">Limpar cache</button>
+          </div>
+          <div class="text-[11px] text-gray-500">
+            Dica: use "Atualizar da Internet" apenas quando estiver em HTTPS. No modo offline, cole o CSV publicado (conteúdo bruto) em "Importar" e ele ficará salvo em cache local.
+          </div>
+        </div>`;
 
       return `
         <div class="p-4 flex flex-col gap-4">
           ${status}${err}
+          ${controles}
           <div class="grid grid-cols-1 gap-4">
             ${Field("Nome do Aluno", Input(state.form.nomeAluno, `data-ev="nomeAluno" placeholder="Digite o nome"`))}
             ${Field("CANAC do Aluno", Input(state.form.canacAluno, `data-ev="canacAluno" placeholder="Ex.: 123456"`))}
@@ -524,7 +541,6 @@
         state._checkoutInit = true;
       }
 
-      // Altura do textarea até o rodapé (sem rolagem extra)
       const headerH = 56 + 48; // aprox header + tabs
       const footerH = 56;      // aprox footer
       const padding = 24 + 48; // paddings/margens
@@ -545,13 +561,11 @@
     // Render raiz + bindings
     // ==========================
     function render(){
-      // tabs
       const tabs = ["Inicial","Informações do voo","Ficha Técnica","Check-out"];
       document.getElementById("tabs").innerHTML = tabs.map(t=>`
         <button data-aba="${t}" class="py-2 rounded-2xl text-sm ${state.aba===t?'bg-black text-white':'bg-gray-200 text-gray-800'}">${t}</button>
       `).join("");
 
-      // page
       const app = document.getElementById("app");
       app.innerHTML =
         state.aba==="Inicial" ? PageInicial()
@@ -563,7 +577,6 @@
     }
 
     function bind(){
-      // tabs
       document.querySelectorAll('[data-aba]').forEach(b=>{
         b.onclick = ()=> { state.aba = b.getAttribute('data-aba'); if (state.aba!=="Check-out") state._checkoutInit = false; render(); };
       });
@@ -577,6 +590,24 @@
       document.querySelectorAll('[data-ev="missao"]').forEach(el=> el.onchange = (e)=>{ const idx=+el.getAttribute('data-idx'); state.form.missoes[idx]=e.target.value; });
       const addM = document.querySelector('[data-ev="add-missao"]'); if (addM) addM.onclick = ()=> { state.form.missoes.push(""); render(); };
       document.querySelectorAll('[data-ev="remove-missao"]').forEach(el=> el.onclick = ()=>{ const idx=+el.getAttribute('data-idx'); state.form.missoes = state.form.missoes.filter((_,i)=>i!==idx); render(); });
+
+      const offlineToggle = document.querySelector('[data-ev="toggle-offline"]');
+      if (offlineToggle) offlineToggle.onchange = (e)=>{ state.settings.offline = !!e.target.checked; render(); };
+      const syncBtn = document.querySelector('[data-ev="sync-inet"]');
+      if (syncBtn) syncBtn.onclick = async ()=>{ if (state.settings.offline) return; await loadAllDatasets(); };
+      document.querySelectorAll('[data-ev="import-csv"]').forEach(btn=>{
+        btn.onclick = ()=>{
+          const fase = btn.getAttribute('data-fase');
+          const txt = prompt(`Cole aqui o CSV bruto da planilha ${fase}`,'');
+          if (!txt) return;
+          const { list, map } = parseMissionsCSV(txt);
+          MISSOES[fase] = map; MISSOES_POR_FASE[fase] = list; state.dadosCarregados[fase] = true;
+          saveDatasetsToCache();
+          render();
+        };
+      });
+      const clearBtn = document.querySelector('[data-ev="limpar-cache"]');
+      if (clearBtn) clearBtn.onclick = ()=>{ localStorage.removeItem('datasets_cache_v1'); location.reload(); };
 
       // Info voo
       const aer = document.querySelector('[data-ev="aeronave"]'); if (aer) aer.onchange = (e)=> state.voo.aeronave = e.target.value;
@@ -640,10 +671,13 @@
     // ==========================
     // Init
     // ==========================
+    window.addEventListener('error', (ev)=>{
+      try{ state.erroCarregamento = `Erro de script: ${ev.message || ev.error}`; render(); }catch(_){/* noop */}
+    }, { once: false });
     document.getElementById("year").textContent = new Date().getFullYear();
     setInterval(tick, 1000);
+    restoreDatasetsFromCache();
     render();
-    loadAllDatasets();
 
     // Testes rápidos (console) — não alterar os existentes
     console.assert(diffHMtoMinutes('10:00','11:30')===90, '10:00-11:30=90');
@@ -652,21 +686,13 @@
     console.assert(minutesToDecimalTenthsStr(63)==='1,0','63->1,0h (trunc)');
     console.assert(addMinutesZulu('23:50',20)==='00:10','rollover ok');
 
-    // Testes adicionais (CSV/rollover)
+    // Testes adicionais
     console.assert(diffHMtoMinutes('23:50','00:10')===20, 'overnight 23:50-00:10=20');
     console.assert(diffHMtoMinutes('00:00','00:00')===0, '00:00-00:00=0');
     console.assert(minutesToHHMM(0)==='00:00','0->00:00');
     console.assert(minutesToDecimalTenthsStr(5)==='0,0','5min->0,0h (trunc)');
     console.assert(minutesToDecimalTenthsStr(6)==='0,1','6min->0,1h');
-    // smoke test: após carregar, deve haver ao menos 1 missão em alguma fase
-    setTimeout(()=>{
-      const someCount = (MISSOES_POR_FASE.PP?.length||0) + (MISSOES_POR_FASE.PC?.length||0) + (MISSOES_POR_FASE.INVA?.length||0);
-      console.assert(someCount>0, 'CSV não populou nenhuma missão (possível CORS).');
-    }, 2000);
-    console.assert(diffHMtoMinutes('00:00','00:00')===0, '00:00-00:00=0');
-    console.assert(minutesToHHMM(0)==='00:00','0->00:00');
-    console.assert(minutesToDecimalTenthsStr(5)==='0,0','5min->0,0h (trunc)');
-    console.assert(minutesToDecimalTenthsStr(6)==='0,1','6min->0,1h');
+    console.assert(normalizeHeader('Códigó / Missão 1')==='codigomissao1','normalizeHeader diacríticos e símbolos');
   </script>
 </body>
 </html>

@@ -1,43 +1,20 @@
-# Deploy ultra-simples (sem build): **um único `index.html`**
-
-> Como no app do jejum: basta criar **um repositório** e colocar **apenas este arquivo `index.html`**. O GitHub Pages serve direto, sem Node, sem Vite e sem build.
-
-## Passos
-
-1. Crie um repositório no GitHub (ex.: `app-instrutor`)
-2. Clique em **Add file → Create new file** e dê o nome **`index.html`**
-3. Cole o conteúdo abaixo **inteiro** e salve (Commit).
-4. Vá em **Settings → Pages** → **Deploy from a branch** → **Branch**: `main` e **Folder**: `/ (root)` → Save.
-5. Acesse: `https://SEU_USUARIO.github.io/app-instrutor/`
-
----
-
-## `index.html` (cole tudo)
-
-```html
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Instrutor de Voo</title>
-  <!-- React 18 UMD + Babel Standalone para rodar JSX no navegador (protótipo) -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <title>Instrução de Voo – Floripa</title>
   <style>
     :root { color-scheme: light; }
     * { box-sizing: border-box; }
-    html, body, #root { height: 100%; margin: 0; }
-    body { background: #f3f4f6; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial; }
+    html, body { height: 100%; margin: 0; }
+    body { background: #f3f4f6; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
     .container { max-width: 420px; margin: 0 auto; }
     .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
-    .pad { padding: 12px; }
-    .pad-lg { padding: 16px; }
+    .pad { padding: 12px; } .pad-lg { padding: 16px; }
     .row { display: flex; gap: 8px; align-items: center; }
     .col { display: flex; flex-direction: column; gap: 8px; }
-    .gap-12 { gap: 12px; }
-    .gap-16 { gap: 16px; }
+    .gap-12 { gap: 12px; } .gap-16 { gap: 16px; }
     .btn { padding: 8px 12px; border-radius: 12px; border: 1px solid #e5e7eb; background: #fff; font-size: 12px; cursor: pointer; }
     .btn-primary { background: #111; color: #fff; border-color: #111; }
     .btn-danger { color: #b91c1c; border-color: #fecaca; }
@@ -48,18 +25,29 @@
     .tab.active { background: #111; color: #fff; }
     .footer { color: #9ca3af; font-size: 12px; text-align: center; padding: 24px 0; }
     .zulu { position: sticky; bottom: 12px; background: #111; color: #fff; text-align: center; padding: 10px 12px; border-radius: 12px; font-size: 18px; }
-    ul { margin: 4px 0 0 16px; padding: 0; }
-    li { list-style: none; }
+    ul { margin: 4px 0 0 16px; padding: 0; } li { list-style: none; }
   </style>
 </head>
 <body>
-  <div id="root" class="container"></div>
+  <div class="container">
+    <header class="pad" style="position:sticky;top:0;background:#fff;backdrop-filter:blur(4px);border-bottom:1px solid #e5e7eb;z-index:10">
+      <div class="pad row" style="justify-content:space-between">
+        <div style="font-weight:600">InstrucaoaovoeFloripa</div>
+        <div style="font-size:12px;color:#6b7280">Protótipo</div>
+      </div>
+      <nav class="pad" style="padding-top:0">
+        <div id="tabs" class="tabs"></div>
+      </nav>
+    </header>
 
-  <script type="text/babel">
-    const { useState, useEffect, useMemo } = React;
+    <main id="app" class="pad"></main>
 
+    <footer class="footer">© <span id="year"></span> — Protótipo para instrutores de voo</footer>
+  </div>
+
+  <script>
     // ==========================
-    // DADOS (parcial, expandimos depois)
+    // DADOS (parcial — amplie quando quiser)
     // ==========================
     const MISSOES = {
       PP: {
@@ -91,354 +79,477 @@
     const FASES = ["PP", "PPR", "PC", "INVA", "PLA"];
     const MISSOES_POR_FASE = {
       PP: [
-        "PS-01", "PS-02", "PS-03", "PS-04", "PS-05", "PS-06", "PS-07", "PS-08", "PS-09", "PS-10",
-        "PS-11", "PS-12", "PS-13", "PS-14", "PS-15", "PS-16", "PS-17", "PS-X1", "PS-18",
-        "AP-01", "AP-02", "AP-03", "AP-04", "AP-05", "AP-06", "AP-07", "AP-08", "AP-09",
-        "NV-01", "NV-02", "NV-03", "NV-X1",
-        "NT-01", "NT-02", "NT-03",
-        "PRCQ", "CQPP"
+        "PS-01","PS-02","PS-03","PS-04","PS-05","PS-06","PS-07","PS-08","PS-09","PS-10",
+        "PS-11","PS-12","PS-13","PS-14","PS-15","PS-16","PS-17","PS-X1","PS-18",
+        "AP-01","AP-02","AP-03","AP-04","AP-05","AP-06","AP-07","AP-08","AP-09",
+        "NV-01","NV-02","NV-03","NV-X1",
+        "NT-01","NT-02","NT-03",
+        "PRCQ","CQPP"
       ],
       PPR: [
-        "PS-03", "PS-05", "PS-07", "PS-10", "PS-15", "PS-17", "PS-X1", "PS-18",
-        "AP-01", "AP-05", "AP-06", "AP-07", "AP-08", "AP-09",
-        "NV-01", "NV-02", "NV-03", "NV-X1",
-        "NT-01", "NT-02", "NT-03",
-        "PRCQ", "CQPP"
+        "PS-03","PS-05","PS-07","PS-10","PS-15","PS-17","PS-X1","PS-18",
+        "AP-01","AP-05","AP-06","AP-07","AP-08","AP-09",
+        "NV-01","NV-02","NV-03","NV-X1",
+        "NT-01","NT-02","NT-03",
+        "PRCQ","CQPP"
       ],
       PC: [
-        "AD-01", "AD-02", "AD-03", "AD-04", "AD-05", "AD-06", "AD-07", "AD-08",
-        "AP-01", "AP-02", "AP-03", "AP-04", "AP-05", "AP-06", "AP-07", "AP-08",
-        "MB-01", "MB-02", "MB-03", "MB-04", "MB-05", "MB-06",
-        "NV-01", "NV-02", "NV-03", "NV-04", "NV-05", "NV-06", "NV-07", "NV-08",
-        "NV-09", "NV-10", "NV-11", "NV-12", "NV-13", "NV-14", "NV-15",
-        "NT-01", "NT-02", "NT-03", "NT-04", "NT-05",
-        "PRCQ", "CQPP"
+        "AD-01","AD-02","AD-03","AD-04","AD-05","AD-06","AD-07","AD-08",
+        "AP-01","AP-02","AP-03","AP-04","AP-05","AP-06","AP-07","AP-08",
+        "MB-01","MB-02","MB-03","MB-04","MB-05","MB-06",
+        "NV-01","NV-02","NV-03","NV-04","NV-05","NV-06","NV-07","NV-08",
+        "NV-09","NV-10","NV-11","NV-12","NV-13","NV-14","NV-15",
+        "NT-01","NT-02","NT-03","NT-04","NT-05",
+        "PRCQ","CQPP"
       ],
       INVA: [
-        "PI-01", "PI-02", "PI-03", "PI-04", "PI-05", "PI-06", "PI-07", "PI-08",
-        "PI-09", "PI-10", "PI-11", "PI-12", "PI-13", "PI-14", "PI-15", "PI-16",
-        "NV-01", "NV-02",
-        "PRCQ", "CQPP"
+        "PI-01","PI-02","PI-03","PI-04","PI-05","PI-06","PI-07","PI-08",
+        "PI-09","PI-10","PI-11","PI-12","PI-13","PI-14","PI-15","PI-16",
+        "NV-01","NV-02","PRCQ","CQPP"
       ],
       PLA: []
     };
 
-    const AERONAVES = ["PR-FLE", "PR-FLD", "PR-FLN", "PT-MJF", "PR-MGX", "PR-FLM"];
-    const TIPOS_VOO = ["Local", "Navegação"];
+    const AERONAVES = ["PR-FLE","PR-FLD","PR-FLN","PT-MJF","PR-MGX","PR-FLM"];
+    const TIPOS_VOO = ["Local","Navegação"];
 
     // ==========================
-    // HORA ZULU - helpers
+    // STATE
     // ==========================
-    const pad2 = (n) => String(n).padStart(2, "0");
-    const dateToZuluHM = (d) => `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
+    const state = {
+      aba: "Inicial",
+      form: { nomeAluno:"", canacAluno:"", dataVoo:"", fase:"PP", missoes:[""] },
+      voo: { tipoVoo:"Local", aeronave:"", local:{}, navegacao:{} },
+      clockZulu: "--:--"
+    };
+
+    // ==========================
+    // HORA ZULU helpers
+    // ==========================
+    const pad2 = (n)=> String(n).padStart(2,"0");
+    const dateToZuluHM = (d)=> `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
     const addMinutesZulu = (baseHM, minutes) => {
-      const [h, m] = baseHM.split(":").map(Number);
+      const [h,m] = baseHM.split(":").map(Number);
       const base = new Date(); base.setUTCHours(h, m, 0, 0);
-      const nd = new Date(base.getTime() + minutes * 60 * 1000);
+      const nd = new Date(base.getTime() + minutes*60*1000);
       return dateToZuluHM(nd);
     };
     const diffHMtoMinutes = (startHM, endHM) => {
       const [sh, sm] = startHM.split(":").map(Number);
       const [eh, em] = endHM.split(":").map(Number);
-      let start = sh * 60 + sm; let end = eh * 60 + em; if (end < start) end += 24 * 60; return end - start;
+      let start = sh*60 + sm; let end = eh*60 + em; if (end < start) end += 24*60;
+      return end - start;
     };
-    const minutesToHHMM = (mins) => `${pad2(Math.floor(mins/60))}:${pad2(mins%60)}`;
-    const minutesToDecimalTenths = (mins) => (Math.floor(mins/6)/10).toFixed(1);
+    const minutesToHHMM = (mins)=> `${pad2(Math.floor(mins/60))}:${pad2(mins%60)}`;
+    const minutesToDecimalTenths = (mins)=> (Math.floor(mins/6)/10).toFixed(1);
 
     // ==========================
-    // Compartilhar WhatsApp
+    // WHATSAPP
     // ==========================
-    async function shareWhatsApp(text, numero) {
+    async function shareWhatsApp(text, numero){
       try {
-        if (navigator.share && (!navigator.canShare || navigator.canShare({ text }))) {
+        if (navigator.share && (!navigator.canShare || navigator.canShare({text}))){
           await navigator.share({ text });
           return;
         }
-      } catch (e) {}
+      } catch {}
       const base = numero ? `https://wa.me/${numero}?text=` : `https://api.whatsapp.com/send?text=`;
       const url = base + encodeURIComponent(text);
-      window.open(url, '_blank');
+      window.open(url, "_blank");
     }
 
     // ==========================
-    // Componentes simples
+    // RENDER helpers
     // ==========================
-    const Field = ({ label, children }) => (
-      <div className="col">
-        <label>{label}</label>
-        {children}
-      </div>
-    );
-
-    const TimeField = ({ label, value, onChange }) => {
-      const toParts = (v="00:00") => { const [h,m] = String(v).split(":"); return { hh: pad2(+h||0), mm: pad2(+m||0) }; };
-      const parts = toParts(value);
-      const HOURS = Array.from({length:24}, (_,i)=>pad2(i));
-      const MINUTES = Array.from({length:60}, (_,i)=>pad2(i));
-      const setHM = (hh,mm)=> onChange(`${pad2(Math.min(23, Math.max(0, +hh||0)))}:${pad2(Math.min(59, Math.max(0, +mm||0)))}`);
-      const setNow = ()=>{ const n=new Date(); setHM(n.getUTCHours(), n.getUTCMinutes()); };
-      return (
-        <Field label={label}>
-          <div className="row">
-            <select value={parts.hh} onChange={e=>setHM(e.target.value, parts.mm)}>
-              {HOURS.map(h=> <option key={h} value={h}>{h}</option>)}
-            </select>
+    function Field(label, innerHTML){
+      return `<div class="col"><label>${label}</label>${innerHTML}</div>`;
+    }
+    function Select(options, value, attrs=""){
+      const opts = options.map(o=>`<option value="${o}">${o}</option>`).join("");
+      return `<select ${attrs}>${opts}</select>`;
+    }
+    function TimeField(id, label, value){
+      const [hh="00", mm="00"] = (String(value||"00:00").split(":").map(x=>pad2(+x||0)));
+      const HOURS = Array.from({length:24}, (_,i)=>pad2(i)).map(h=>`<option value="${h}">${h}</option>`).join("");
+      const MINUTES = Array.from({length:60}, (_,i)=>pad2(i)).map(m=>`<option value="${m}">${m}</option>`).join("");
+      return `
+        <div class="col">
+          <label>${label}</label>
+          <div class="row">
+            <select data-id="${id}" data-part="hh">${HOURS}</select>
             <span>:</span>
-            <select value={parts.mm} onChange={e=>setHM(parts.hh, e.target.value)}>
-              {MINUTES.map(m=> <option key={m} value={m}>{m}</option>)}
-            </select>
-            <button className="btn" onClick={setNow}>Agora (Z)</button>
+            <select data-id="${id}" data-part="mm">${MINUTES}</select>
+            <button class="btn" data-id="${id}" data-action="nowz">Agora (Z)</button>
           </div>
-        </Field>
-      );
-    };
+          <input type="hidden" id="${id}" value="${hh}:${mm}" />
+        </div>
+        <script>
+          (function(){
+            const hh = document.querySelector('select[data-id="${id}"][data-part="hh"]');
+            const mm = document.querySelector('select[data-id="${id}"][data-part="mm"]');
+            const hidden = document.getElementById('${id}');
+            hh.value='${hh}'; mm.value='${mm}';
+            function update(){ hidden.value = \`\${hh.value}:\${mm.value}\`; hidden.dispatchEvent(new Event('change')); }
+            hh.onchange=update; mm.onchange=update;
+            const btn = document.querySelector('button[data-id="${id}"][data-action="nowz"]');
+            btn.onclick = ()=>{ const n = new Date(); hh.value='${'${'}pad2(n.getUTCHours())${'}'}'; mm.value='${'${'}pad2(n.getUTCMinutes())${'}'}'; update(); };
+          })();
+        </script>
+      `;
+    }
+
+    function semicolonSplitToItems(raw){
+      const arr = Array.isArray(raw) ? raw : [String(raw||"")];
+      return arr.flatMap(s=> String(s).split(";"))
+                .map(x=>x.trim())
+                .filter(Boolean);
+    }
+    function formatMissoesForText(dataset, codes){
+      const blocks = [];
+      (codes||[]).forEach(code=>{
+        const d = dataset?.[code];
+        blocks.push(`Missão ${code}`);
+        const itens = d ? semicolonSplitToItems(d.conteudo) : [];
+        itens.forEach((item, idx)=> blocks.push(`- ${item}${idx < itens.length-1 ? ';' : ''}`));
+        if (!itens.length) blocks.push('- (sem itens)');
+        blocks.push('');
+      });
+      return blocks.join('\n');
+    }
 
     // ==========================
-    // Páginas
+    // PÁGINAS
     // ==========================
-    const PaginaInicial = ({ form, setForm, addMissao, removeMissao }) => {
+    function PageInicial(){
       const todayISO = new Date().toISOString().slice(0,10);
-      useEffect(()=>{ if(!form.dataVoo) setForm(f=>({...f, dataVoo: todayISO})); },[]);
-      return (
-        <div className="pad-lg col gap-16">
-          <div className="col gap-12">
-            <Field label="Nome do Aluno"><input className="input" value={form.nomeAluno||""} onChange={e=>setForm(f=>({...f, nomeAluno:e.target.value}))} placeholder="Digite o nome"/></Field>
-            <Field label="CANAC do Aluno"><input className="input" value={form.canacAluno||""} onChange={e=>setForm(f=>({...f, canacAluno:e.target.value}))} placeholder="Ex.: 123456"/></Field>
-            <Field label="Data do Voo"><input type="date" className="input" value={form.dataVoo||todayISO} onChange={e=>setForm(f=>({...f, dataVoo:e.target.value}))}/></Field>
-            <Field label="Fase da Instrução">
-              <select className="input" value={form.fase||"PP"} onChange={e=>setForm(f=>({...f, fase:e.target.value}))}>
-                {FASES.map(opt=> <option key={opt} value={opt}>{opt}</option>)}
-              </select>
-            </Field>
+      if (!state.form.dataVoo) state.form.dataVoo = todayISO;
+
+      const missoesHTML = state.form.missoes.map((m,idx)=>`
+        <div class="card pad row" style="align-items:center">
+          ${Select(["",...MISSOES_POR_FASE[state.form.fase||"PP"]], m, `data-ev="missao" data-idx="${idx}" class="input"`)}
+          <button class="btn btn-danger" data-ev="remove-missao" data-idx="${idx}">Remover</button>
+        </div>
+      `).join("");
+
+      return `
+        <div class="pad-lg col gap-16">
+          <div class="col gap-12">
+            ${Field("Nome do Aluno", `<input class="input" value="${state.form.nomeAluno||""}" data-ev="nomeAluno" placeholder="Digite o nome" />`)}
+            ${Field("CANAC do Aluno", `<input class="input" value="${state.form.canacAluno||""}" data-ev="canacAluno" placeholder="Ex.: 123456" />`)}
+            ${Field("Data do Voo", `<input type="date" class="input" value="${state.form.dataVoo||todayISO}" data-ev="dataVoo" />`)}
+            ${Field("Fase da Instrução", Select(FASES, state.form.fase||"PP", `data-ev="fase" class="input"`))}
           </div>
 
-          <div className="col gap-12">
-            <div className="row" style={{justifyContent:'space-between'}}>
-              <span style={{fontSize:13, color:'#374151'}}>Missões</span>
-              <button className="btn btn-primary" onClick={addMissao}>+ Adicionar</button>
+          <div class="col gap-12">
+            <div class="row" style="justify-content:space-between">
+              <span style="font-size:13px;color:#374151">Missões</span>
+              <button class="btn btn-primary" data-ev="add-missao">+ Adicionar</button>
             </div>
-            <div className="col gap-12">
-              {form.missoes.map((m,idx)=> (
-                <div key={idx} className="card pad row" style={{alignItems:'center'}}>
-                  <select className="input" value={m||""} onChange={e=>setForm(f=>{const ms=[...f.missoes]; ms[idx]=e.target.value; return {...f, missoes:ms};})}>
-                    {["", ...MISSOES_POR_FASE[form.fase||"PP"]].map(opt=> <option key={opt} value={opt}>{opt}</option>)}
-                  </select>
-                  <button className="btn btn-danger" onClick={()=>removeMissao(idx)}>Remover</button>
-                </div>
-              ))}
-            </div>
+            <div class="col gap-12">${missoesHTML}</div>
           </div>
         </div>
-      );
-    };
+      `;
+    }
 
-    const PaginaInfoVoo = ({ voo, setVoo }) => {
-      const [clockZulu, setClockZulu] = useState(dateToZuluHM(new Date()));
-      useEffect(()=>{
-        const nowHM = dateToZuluHM(new Date());
-        setVoo(v=>{
-          if(v.tipoVoo === 'Navegação') return v;
-          const acion = nowHM; const deco = addMinutesZulu(acion,10); const pouso = addMinutesZulu(acion,55); const corte = addMinutesZulu(acion,60);
-          return { aeronave: v.aeronave||"", tipoVoo: v.tipoVoo||"Local",
-            local: { acionamento: v?.local?.acionamento||acion, decolagem: v?.local?.decolagem||deco, pouso: v?.local?.pouso||pouso, corte: v?.local?.corte||corte },
-            navegacao: v.navegacao || { acionamento: acion, perna:[{ decolagem:deco, pouso:addMinutesZulu(deco,30)}], corte }
-          };
+    function pageInfoResultados(){
+      if ((state.voo.tipoVoo||"Local") === "Local"){
+        const minsTotal = diffHMtoMinutes(state.voo.local?.acionamento||"00:00", state.voo.local?.corte||"00:00");
+        const minsVoo = diffHMtoMinutes(state.voo.local?.decolagem||"00:00", state.voo.local?.pouso||"00:00");
+        return {
+          totalHHMM: minutesToHHMM(minsTotal),
+          totalDecimal: minutesToDecimalTenths(minsTotal),
+          vooHHMM: minutesToHHMM(minsVoo),
+          vooDecimal: minutesToDecimalTenths(minsVoo),
+          pernas:[]
+        };
+      } else {
+        const acion = state.voo.navegacao?.acionamento || "00:00";
+        const corte = state.voo.navegacao?.corte || "00:00";
+        const minsTotal = diffHMtoMinutes(acion, corte);
+        const pernas = (state.voo.navegacao?.perna||[]).map(p=>{
+          const mm = diffHMtoMinutes(p.decolagem||"00:00", p.pouso||"00:00");
+          return { ...p, hhmm: minutesToHHMM(mm), dec: minutesToDecimalTenths(mm) };
         });
-      },[]);
-      useEffect(()=>{ const t = setInterval(()=> setClockZulu(dateToZuluHM(new Date())), 1000); return ()=>clearInterval(t); },[]);
-      const resultados = useMemo(()=>{
-        if ((voo.tipoVoo||'Local') === 'Local'){
-          const minsTotal = diffHMtoMinutes(voo.local?.acionamento||'00:00', voo.local?.corte||'00:00');
-          const minsVoo = diffHMtoMinutes(voo.local?.decolagem||'00:00', voo.local?.pouso||'00:00');
-          return { totalHHMM: minutesToHHMM(minsTotal), totalDecimal: minutesToDecimalTenths(minsTotal), vooHHMM: minutesToHHMM(minsVoo), vooDecimal: minutesToDecimalTenths(minsVoo), pernas:[] };
-        } else {
-          const acion = voo.navegacao?.acionamento||'00:00'; const corte = voo.navegacao?.corte||'00:00';
-          const minsTotal = diffHMtoMinutes(acion, corte);
-          const pernas = (voo.navegacao?.perna||[]).map(p=>{ const mm = diffHMtoMinutes(p.decolagem||'00:00', p.pouso||'00:00'); return { ...p, hhmm: minutesToHHMM(mm), dec: minutesToDecimalTenths(mm) }; });
-          return { totalHHMM: minutesToHHMM(minsTotal), totalDecimal: minutesToDecimalTenths(minsTotal), vooHHMM:null, vooDecimal:null, pernas };
-        }
-      },[voo]);
-      const addPerna = ()=> setVoo(v=>{ const per=v.navegacao?.perna||[]; const last=per[per.length-1]||{decolagem:v.navegacao?.acionamento||'00:00', pouso:addMinutesZulu(v.navegacao?.acionamento||'00:00',30)}; const nextDec=addMinutesZulu(last.pouso,30); const nextPou=addMinutesZulu(nextDec,30); return {...v, navegacao:{...v.navegacao, perna:[...per, {decolagem:nextDec, pouso:nextPou}]}}; });
-      const removePerna = (idx)=> setVoo(v=>{ const per=[...(v.navegacao?.perna||[])]; per.splice(idx,1); return {...v, navegacao:{...v.navegacao, perna:per}}; });
-      return (
-        <div className="pad-lg col gap-16">
-          <div className="col gap-12">
-            <Field label="Aeronave">
-              <select className="input" value={voo.aeronave||""} onChange={e=>setVoo(f=>({...f, aeronave:e.target.value}))}>
-                {["", ...AERONAVES].map(opt=> <option key={opt} value={opt}>{opt}</option>)}
-              </select>
-            </Field>
-            <Field label="Tipo de Voo">
-              <select className="input" value={voo.tipoVoo||"Local"} onChange={e=>setVoo(f=>({...f, tipoVoo:e.target.value}))}>
-                {TIPOS_VOO.map(opt=> <option key={opt} value={opt}>{opt}</option>)}
-              </select>
-            </Field>
+        return {
+          totalHHMM: minutesToHHMM(minsTotal),
+          totalDecimal: minutesToDecimalTenths(minsTotal),
+          vooHHMM:null,
+          vooDecimal:null,
+          pernas
+        };
+      }
+    }
+
+    function PageInfoVoo(){
+      // Pré-preencher se vazio
+      const nowHM = dateToZuluHM(new Date());
+      if (!state.voo.local?.acionamento && state.voo.tipoVoo !== "Navegação"){
+        const acion = nowHM;
+        const deco = addMinutesZulu(acion, 10);
+        const pouso = addMinutesZulu(acion, 55);
+        const corte = addMinutesZulu(acion, 60);
+        state.voo = {
+          aeronave: state.voo.aeronave || "",
+          tipoVoo: state.voo.tipoVoo || "Local",
+          local: { acionamento: acion, decolagem: deco, pouso, corte },
+          navegacao: state.voo.navegacao || { acionamento: acion, perna: [{ decolagem: deco, pouso: addMinutesZulu(deco,30) }], corte }
+        };
+      }
+
+      const selecaoTipo = Select(TIPOS_VOO, state.voo.tipoVoo||"Local", 'data-ev="tipoVoo" class="input"');
+      const selecaoAeronave = Select(["",...AERONAVES], state.voo.aeronave||"", 'data-ev="aeronave" class="input"');
+
+      const tipoLocal = `
+        ${TimeField("local-acion", "Acionamento (Zulu)", state.voo.local?.acionamento||"")}
+        ${TimeField("local-decol", "Decolagem (Zulu)", state.voo.local?.decolagem||"")}
+        ${TimeField("local-pouso", "Pouso (Zulu)", state.voo.local?.pouso||"")}
+        ${TimeField("local-corte", "Corte (Zulu)", state.voo.local?.corte||"")}
+      `;
+
+      const pernasHTML = (state.voo.navegacao?.perna||[]).map((p,idx)=>`
+        <div class="card pad">
+          <div class="row" style="justify-content:space-between">
+            <span style="font-size:13px;font-weight:600">Perna ${idx+1}</span>
+            <button class="btn btn-danger" data-ev="remove-perna" data-idx="${idx}">Remover</button>
           </div>
-
-          {(voo.tipoVoo||'Local')==='Local' ? (
-            <div className="col gap-12">
-              <TimeField label="Acionamento (Zulu)" value={voo.local?.acionamento||''} onChange={val=>setVoo(v=>({...v, local:{...v.local, acionamento:val}}))} />
-              <TimeField label="Decolagem (Zulu)" value={voo.local?.decolagem||''} onChange={val=>setVoo(v=>({...v, local:{...v.local, decolagem:val}}))} />
-              <TimeField label="Pouso (Zulu)" value={voo.local?.pouso||''} onChange={val=>setVoo(v=>({...v, local:{...v.local, pouso:val}}))} />
-              <TimeField label="Corte (Zulu)" value={voo.local?.corte||''} onChange={val=>setVoo(v=>({...v, local:{...v.local, corte:val}}))} />
-            </div>
-          ) : (
-            <div className="col gap-12">
-              <TimeField label="Acionamento (Zulu)" value={voo.navegacao?.acionamento||''} onChange={val=>setVoo(v=>({...v, navegacao:{...v.navegacao, acionamento:val}}))} />
-              {(voo.navegacao?.perna||[]).map((p,idx)=> (
-                <div key={idx} className="card pad">
-                  <div className="row" style={{justifyContent:'space-between'}}>
-                    <span style={{fontSize:13,fontWeight:600}}>Perna {idx+1}</span>
-                    <button className="btn btn-danger" onClick={()=>removePerna(idx)}>Remover</button>
-                  </div>
-                  <div className="col gap-12">
-                    <TimeField label="Decolagem (Zulu)" value={p.decolagem} onChange={val=>setVoo(v=>{ const per=[...(v.navegacao?.perna||[])]; per[idx] = { ...per[idx], decolagem:val }; return {...v, navegacao:{...v.navegacao, perna:per}}; })} />
-                    <TimeField label="Pouso (Zulu)" value={p.pouso} onChange={val=>setVoo(v=>{ const per=[...(v.navegacao?.perna||[])]; per[idx] = { ...per[idx], pouso:val }; return {...v, navegacao:{...v.navegacao, perna:per}}; })} />
-                  </div>
-                </div>
-              ))}
-              <button className="btn btn-primary" onClick={addPerna}>+ Adicionar Decolagem/Pouso</button>
-              <TimeField label="Corte (Zulu)" value={voo.navegacao?.corte||''} onChange={val=>setVoo(v=>({...v, navegacao:{...v.navegacao, corte:val}}))} />
-            </div>
-          )}
-
-          <div className="card pad">
-            <div style={{fontSize:13,color:'#4b5563',marginBottom:4}}>Somatórios</div>
-            <div style={{fontSize:14}}>Total (Acionamento → Corte): <b>{resultados.totalHHMM}</b> – <b>{resultados.totalDecimal} h</b></div>
-            {(voo.tipoVoo||'Local')==='Local' ? (
-              <div style={{fontSize:14}}>Decolagem → Pouso: <b>{resultados.vooHHMM}</b> – <b>{resultados.vooDecimal} h</b></div>
-            ) : (
-              <div className="col">
-                {(resultados.pernas||[]).map((p,i)=> (
-                  <div key={i} style={{fontSize:14}}>Perna {i+1} (Dec→Pou): <b>{p.hhmm}</b> – <b>{p.dec} h</b></div>
-                ))}
-              </div>
-            )}
+          <div class="col gap-12">
+            ${TimeField(`nav-dec-${idx}`,"Decolagem (Zulu)", p.decolagem)}
+            ${TimeField(`nav-pou-${idx}`,"Pouso (Zulu)", p.pouso)}
           </div>
-
-          <div className="zulu">Horário Zulu: <b>{clockZulu}Z</b></div>
         </div>
-      );
-    };
+      `).join("");
 
-    const PaginaFichaTecnica = ({ fase, missoesSelecionadas, form }) => {
-      const dataset = useMemo(()=>{
-        if (fase==='PC') return MISSOES.PC; if (fase==='INVA') return MISSOES.INVA; if (fase==='PP' || fase==='PPR') return MISSOES.PP; return {};
-      },[fase]);
-      const formatMissoesForText = (dataset, codes)=>{
-        const blocks=[]; (codes||[]).forEach(code=>{ const d=dataset?.[code]; blocks.push(`Missão ${code}`); const itens=(d&&d.conteudo? String(d.conteudo).split(';').map(x=>x.trim()).filter(Boolean):[]); itens.forEach((it,idx)=>blocks.push(`- ${it}${idx<itens.length-1?';':''}`)); if(!itens.length) blocks.push('- (sem itens)'); blocks.push(''); }); return blocks.join('
-');
+      const tipoNav = `
+        ${TimeField("nav-acion","Acionamento (Zulu)", state.voo.navegacao?.acionamento||"")}
+        ${pernasHTML}
+        <button class="btn btn-primary" data-ev="add-perna">+ Adicionar Decolagem/Pouso</button>
+        ${TimeField("nav-corte","Corte (Zulu)", state.voo.navegacao?.corte||"")}
+      `;
+
+      const r = pageInfoResultados();
+
+      return `
+        <div class="pad-lg col gap-16">
+          <div class="col gap-12">
+            ${Field("Aeronave", selecaoAeronave)}
+            ${Field("Tipo de Voo", selecaoTipo)}
+          </div>
+
+          ${(state.voo.tipoVoo||"Local")==="Local" ? `<div class="col gap-12">${tipoLocal}</div>` : `<div class="col gap-12">${tipoNav}</div>`}
+
+          <div class="card pad">
+            <div style="font-size:13px;color:#4b5563;margin-bottom:4px">Somatórios</div>
+            <div style="font-size:14px">Total (Acionamento → Corte): <b>${r.totalHHMM}</b> – <b>${r.totalDecimal} h</b></div>
+            ${(state.voo.tipoVoo||"Local")==="Local"
+              ? `<div style="font-size:14px">Decolagem → Pouso: <b>${r.vooHHMM}</b> – <b>${r.vooDecimal} h</b></div>`
+              : `<div class="col">${r.pernas.map((p,i)=>`<div style="font-size:14px">Perna ${i+1} (Dec→Pou): <b>${p.hhmm}</b> – <b>${p.dec} h</b></div>`).join("")}</div>`
+            }
+          </div>
+
+          <div class="zulu">Horário Zulu: <b id="clockZulu">${state.clockZulu}Z</b></div>
+        </div>
+      `;
+    }
+
+    function datasetByFase(fase){
+      if (fase==="PC") return MISSOES.PC;
+      if (fase==="INVA") return MISSOES.INVA;
+      if (fase==="PP" || fase==="PPR") return MISSOES.PP;
+      return {};
+    }
+
+    function PageFichaTecnica(){
+      const ds = datasetByFase(state.form.fase);
+      const selecionadas = (state.form.missoes||[]).filter(Boolean);
+      const infos = selecionadas.map(code => ({ code, data: ds?.[code] }));
+
+      const itensHTML = infos.map(m=>`
+        <div class="card pad">
+          <div style="font-size:16px;font-weight:600;margin-bottom:8px">Missão: ${m.code}</div>
+          ${
+            !m.data
+            ? `<div style="color:#b91c1c;font-size:13px">Não encontrado na base de dados embutida.</div>`
+            : `
+              <div class="col">
+                <div><b>Tempo de Voo:</b> ${m.data.tempo_voo||"-"}</div>
+                <div><b>Pousos:</b> ${m.data.pousos ?? "-"}</div>
+                <div><b>Pré-requisitos:</b> ${(m.data.pre_requisitos||[]).join(", ") || "-"}</div>
+                <div><b>Registro:</b> ${m.data.registro||"-"}</div>
+                <div><b>Competências:</b> ${(m.data.competencias||[]).join(", ") || "-"}</div>
+                <div>
+                  <b>Conteúdo / Manobras:</b>
+                  <div style="margin-top:4px">Missão ${m.code}</div>
+                  <ul>
+                    ${
+                      (semicolonSplitToItems(m.data.conteudo)).map((c,i,arr)=> `<li>- ${c}${i < arr.length-1 ? ';' : ''}</li>`).join("")
+                    }
+                  </ul>
+                </div>
+              </div>
+            `
+          }
+        </div>
+      `).join("");
+
+      return `
+        <div class="pad-lg col gap-16">
+          ${infos.length===0 ? `<div style="color:#6b7280;font-size:13px">Selecione ao menos uma missão na página inicial.</div>` : ""}
+          <button class="btn btn-primary" data-ev="share-ficha">Compartilhar WhatsApp</button>
+          ${itensHTML}
+        </div>
+      `;
+    }
+
+    function PageCheckout(){
+      const ds = datasetByFase(state.form.fase);
+      const selecionadas = (state.form.missoes||[]).filter(Boolean);
+      if (!state._checkoutInit){
+        const linhas=[];
+        selecionadas.forEach(code=>{
+          const d = ds?.[code];
+          linhas.push(`Missão ${code}`);
+          if (d && d.conteudo){
+            const itens = semicolonSplitToItems(d.conteudo);
+            itens.forEach((it,idx)=> linhas.push(`- ${it}${idx < itens.length-1 ? ';' : ''}`));
+          }
+          linhas.push("");
+        });
+        state.checkoutTexto = linhas.join("\n");
+        state._checkoutInit = true;
+      }
+      return `
+        <div class="pad-lg col gap-12">
+          <div style="color:#6b7280;font-size:13px">Escreva aqui sua avaliação (livre). O texto vem pré-preenchido com o descritivo da(s) missão(ões), podendo ser editado.</div>
+          <div class="row">
+            <button class="btn btn-primary" data-ev="share-checkout">Compartilhar WhatsApp</button>
+          </div>
+          <textarea class="input" style="min-height:240px" data-ev="checkout-texto">${state.checkoutTexto||""}</textarea>
+        </div>
+      `;
+    }
+
+    // ==========================
+    // RENDER raiz
+    // ==========================
+    function render(){
+      // tabs
+      const tabs = ["Inicial","Informações do voo","Ficha Técnica","Check-out"];
+      document.getElementById("tabs").innerHTML = tabs.map(t=>`
+        <button class="tab ${state.aba===t?"active":""}" data-aba="${t}">${t}</button>
+      `).join("");
+
+      // page
+      const app = document.getElementById("app");
+      app.innerHTML =
+        state.aba==="Inicial" ? PageInicial()
+      : state.aba==="Informações do voo" ? PageInfoVoo()
+      : state.aba==="Ficha Técnica" ? PageFichaTecnica()
+      : PageCheckout();
+
+      bindEvents();
+    }
+
+    // ==========================
+    // Event binding por página
+    // ==========================
+    function bindEvents(){
+      // tabs
+      document.querySelectorAll('[data-aba]').forEach(el=>{
+        el.onclick = ()=> { state.aba = el.getAttribute('data-aba'); if (state.aba!=="Check-out") state._checkoutInit = false; render(); };
+      });
+
+      // INICIAL
+      document.querySelectorAll('[data-ev="nomeAluno"]').forEach(el=> el.oninput = e=> state.form.nomeAluno = e.target.value );
+      document.querySelectorAll('[data-ev="canacAluno"]').forEach(el=> el.oninput = e=> state.form.canacAluno = e.target.value );
+      document.querySelectorAll('[data-ev="dataVoo"]').forEach(el=> el.oninput = e=> state.form.dataVoo = e.target.value );
+      const faseEl = document.querySelector('[data-ev="fase"]'); if (faseEl) faseEl.onchange = e=> { state.form.fase = e.target.value; state.form.missoes = [""]; render(); };
+      document.querySelectorAll('[data-ev="missao"]').forEach(el=> el.onchange = e=>{
+        const idx = +el.getAttribute('data-idx'); state.form.missoes[idx] = e.target.value;
+      });
+      const addM = document.querySelector('[data-ev="add-missao"]'); if (addM) addM.onclick = ()=> { state.form.missoes.push(""); render(); };
+      document.querySelectorAll('[data-ev="remove-missao"]').forEach(el=> el.onclick = ()=>{
+        const idx = +el.getAttribute('data-idx'); state.form.missoes = state.form.missoes.filter((_,i)=> i!==idx); render();
+      });
+
+      // INFO VOO
+      const aer = document.querySelector('[data-ev="aeronave"]'); if (aer) aer.onchange = e=> state.voo.aeronave = e.target.value;
+      const tipo = document.querySelector('[data-ev="tipoVoo"]'); if (tipo) tipo.onchange = e=> { state.voo.tipoVoo = e.target.value; render(); };
+
+      // TimeField Local
+      bindHM("local-acion", (val)=> { state.voo.local = {...state.voo.local, acionamento:val}; });
+      bindHM("local-decol", (val)=> { state.voo.local = {...state.voo.local, decolagem:val}; });
+      bindHM("local-pouso", (val)=> { state.voo.local = {...state.voo.local, pouso:val}; });
+      bindHM("local-corte", (val)=> { state.voo.local = {...state.voo.local, corte:val}; });
+
+      // TimeField Navegação
+      bindHM("nav-acion",(val)=> { state.voo.navegacao = {...state.voo.navegacao, acionamento:val}; });
+      bindHM("nav-corte",(val)=> { state.voo.navegacao = {...state.voo.navegacao, corte:val}; });
+
+      // pernas
+      const addP = document.querySelector('[data-ev="add-perna"]'); if (addP) addP.onclick = ()=>{
+        const per = state.voo.navegacao?.perna || [];
+        const last = per[per.length-1] || { decolagem: state.voo.navegacao?.acionamento || "00:00", pouso: addMinutesZulu(state.voo.navegacao?.acionamento || "00:00", 30) };
+        const nextDec = addMinutesZulu(last.pouso, 30);
+        const nextPou = addMinutesZulu(nextDec, 30);
+        state.voo.navegacao = { ...(state.voo.navegacao||{}), perna: [...per, { decolagem: nextDec, pouso: nextPou }] };
+        render();
       };
-      const infos = (missoesSelecionadas||[]).map(code=>({ code, data: dataset?.[code] }));
-      return (
-        <div className="pad-lg col gap-16">
-          {infos.length===0 && <div style={{color:'#6b7280',fontSize:13}}>Selecione ao menos uma missão na página inicial.</div>}
-          <button className="btn btn-primary" onClick={()=>{ const text = formatMissoesForText(dataset, missoesSelecionadas); shareWhatsApp(text); }}>Compartilhar WhatsApp</button>
-          {infos.map((m,idx)=> (
-            <div key={idx} className="card pad">
-              <div style={{fontSize:16,fontWeight:600,marginBottom:8}}>Missão: {m.code}</div>
-              {!m.data ? (
-                <div style={{color:'#b91c1c',fontSize:13}}>Não encontrado na base de dados embutida.</div>
-              ) : (
-                <div className="col">
-                  <div><b>Tempo de Voo:</b> {m.data.tempo_voo||'-'}</div>
-                  <div><b>Pousos:</b> {m.data.pousos??'-'}</div>
-                  <div><b>Pré-requisitos:</b> {(m.data.pre_requisitos||[]).join(', ')||'-'}</div>
-                  <div><b>Registro:</b> {m.data.registro||'-'}</div>
-                  <div><b>Competências:</b> {(m.data.competencias||[]).join(', ')||'-'}</div>
-                  <div>
-                    <b>Conteúdo / Manobras:</b>
-                    <div style={{marginTop:4}}>Missão {m.code}</div>
-                    <ul>
-                      {(String(m.data.conteudo||'').split(';').map(x=>x.trim()).filter(Boolean)).map((c,i,arr)=> (
-                        <li key={i}>- {c}{i < arr.length-1 ? ';' : ''}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      );
-    };
+      document.querySelectorAll('[data-ev="remove-perna"]').forEach(el=> el.onclick = ()=>{
+        const idx = +el.getAttribute('data-idx');
+        const per = [...(state.voo.navegacao?.perna||[])];
+        per.splice(idx,1);
+        state.voo.navegacao = { ...(state.voo.navegacao||{}), perna: per };
+        render();
+      });
+      // binds HM para cada perna
+      (state.voo.navegacao?.perna||[]).forEach((p,idx)=>{
+        bindHM(`nav-dec-${idx}`, (val)=>{ const per=[...(state.voo.navegacao?.perna||[])]; per[idx]={...per[idx], decolagem:val}; state.voo.navegacao={...(state.voo.navegacao||{}), perna:per}; });
+        bindHM(`nav-pou-${idx}`, (val)=>{ const per=[...(state.voo.navegacao?.perna||[])]; per[idx]={...per[idx], pouso:val}; state.voo.navegacao={...(state.voo.navegacao||{}), perna:per}; });
+      });
 
-    const PaginaCheckout = ({ fase, missoesSelecionadas, form }) => {
-      const dataset = useMemo(()=>{ if (fase==='PC') return MISSOES.PC; if (fase==='INVA') return MISSOES.INVA; if (fase==='PP' || fase==='PPR') return MISSOES.PP; return {}; },[fase]);
-      const [texto, setTexto] = useState("");
-      useEffect(()=>{
-        const linhas=[]; (missoesSelecionadas||[]).forEach(code=>{ const d=dataset?.[code]; linhas.push(`Missão ${code}`); if(d && d.conteudo){ const itens=String(d.conteudo).split(';').map(x=>x.trim()).filter(Boolean); itens.forEach((it,idx)=>linhas.push(`- ${it}${idx<itens.length-1?';':''}`)); } linhas.push(''); }); if(linhas.length) setTexto(linhas.join('
-'));
-      },[fase, JSON.stringify(missoesSelecionadas)]);
-      return (
-        <div className="pad-lg col gap-12">
-          <div style={{color:'#6b7280',fontSize:13}}>Escreva aqui sua avaliação (livre). O texto vem pré-preenchido com o descritivo da(s) missão(ões), podendo ser editado.</div>
-          <div className="row">
-            <button className="btn btn-primary" onClick={()=> shareWhatsApp(texto)}>Compartilhar WhatsApp</button>
-          </div>
-          <textarea className="input" style={{minHeight: 240}} value={texto} onChange={e=>setTexto(e.target.value)} />
-        </div>
-      );
-    };
+      // FICHA TÉCNICA
+      const btnShareF = document.querySelector('[data-ev="share-ficha"]');
+      if (btnShareF) btnShareF.onclick = ()=>{
+        const ds = datasetByFase(state.form.fase);
+        const codes = (state.form.missoes||[]).filter(Boolean);
+        const text = formatMissoesForText(ds, codes);
+        shareWhatsApp(text);
+      };
+
+      // CHECK-OUT
+      const area = document.querySelector('[data-ev="checkout-texto"]');
+      if (area) area.oninput = e=> state.checkoutTexto = e.target.value;
+      const btnShareC = document.querySelector('[data-ev="share-checkout"]');
+      if (btnShareC) btnShareC.onclick = ()=> shareWhatsApp(state.checkoutTexto || "");
+    }
+
+    function bindHM(id, setter){
+      const hidden = document.getElementById(id);
+      if (!hidden) return;
+      hidden.addEventListener('change', ()=> setter(hidden.value));
+    }
 
     // ==========================
-    // App
+    // Relógio Zulu
     // ==========================
-    const App = () => {
-      const [aba, setAba] = useState('Inicial');
-      const [form, setForm] = useState({ nomeAluno:'', canacAluno:'', dataVoo:'', fase:'PP', missoes:[''] });
-      const [voo, setVoo] = useState({ tipoVoo:'Local' });
-      const tabs = ['Inicial','Informações do voo','Ficha Técnica','Check-out'];
+    function tick(){
+      state.clockZulu = dateToZuluHM(new Date());
+      const el = document.getElementById("clockZulu");
+      if (el) el.textContent = state.clockZulu + "Z";
+    }
 
-      // Testes rápidos (console)
-      useEffect(()=>{
-        console.assert(diffHMtoMinutes('10:00','11:30')===90, '10:00-11:30=90');
-        console.assert(minutesToHHMM(110)==='01:50', '110->01:50');
-        console.assert(minutesToDecimalTenths(110)==='1.8','110->1.8h');
-        console.assert(addMinutesZulu('23:50',20)==='00:10','rollover');
-        const txt = `Missão X
-- A;
-- B;
-- C`;
-        console.assert(/Missão X/.test(txt)&&/A;/.test(txt)&&/B;/.test(txt)&&/C$/.test(txt.replace(/
-/g,'
-')),'formato lista');
-      },[]);
+    // ==========================
+    // Inicialização
+    // ==========================
+    document.getElementById("year").textContent = new Date().getFullYear();
+    setInterval(tick, 1000);
+    render();
 
-      const addMissao = ()=> setForm(f=>({...f, missoes:[...f.missoes, '']}));
-      const removeMissao = (idx)=> setForm(f=>({...f, missoes: f.missoes.filter((_,i)=>i!==idx)}));
-
-      return (
-        <div style={{minHeight:'100vh'}}>
-          <header className="pad" style={{position:'sticky',top:0,background:'#fff',backdropFilter:'blur(4px)',borderBottom:'1px solid #e5e7eb',zIndex:10}}>
-            <div className="pad container row" style={{justifyContent:'space-between'}}>
-              <div style={{fontWeight:600}}>Instrutor de Voo</div>
-              <div style={{fontSize:12,color:'#6b7280'}}>Protótipo</div>
-            </div>
-            <nav className="container pad" style={{paddingTop:0}}>
-              <div className="tabs">
-                {tabs.map(t=> (
-                  <button key={t} className={`tab ${aba===t?'active':''}`} onClick={()=>setAba(t)}>{t}</button>
-                ))}
-              </div>
-            </nav>
-          </header>
-
-          <main className="container">
-            {aba==='Inicial' && (<PaginaInicial form={form} setForm={setForm} addMissao={addMissao} removeMissao={removeMissao} />)}
-            {aba==='Informações do voo' && (<PaginaInfoVoo voo={voo} setVoo={setVoo} />)}
-            {aba==='Ficha Técnica' && (<PaginaFichaTecnica fase={form.fase} missoesSelecionadas={form.missoes.filter(Boolean)} form={form} />)}
-            {aba==='Check-out' && (<PaginaCheckout fase={form.fase} missoesSelecionadas={form.missoes.filter(Boolean)} form={form} />)}
-          </main>
-
-          <footer className="footer container">© {new Date().getFullYear()} — Protótipo para instrutores de voo</footer>
-        </div>
-      );
-    };
-
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
+    // Testes rápidos no console
+    console.assert(diffHMtoMinutes('10:00','11:30')===90, '10:00-11:30=90');
+    console.assert(minutesToHHMM(110)==='01:50', '110->01:50');
+    console.assert(minutesToDecimalTenths(110)==='1.8','110->1.8h');
+    console.assert(addMinutesZulu('23:50',20)==='00:10','rollover ok');
   </script>
 </body>
 </html>
-```

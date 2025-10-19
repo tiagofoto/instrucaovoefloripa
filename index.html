@@ -13,7 +13,7 @@
     <!-- Header / Tabs -->
     <header class="sticky top-0 z-10 bg-white/80 backdrop-blur border-b">
       <div class="px-4 py-3 flex items-center justify-between">
-        <div class="text-lg font-semibold"></div><!-- título removido -->
+        <div class="text-lg font-semibold"></div>
         <div class="text-xs text-gray-500">Protótipo</div>
       </div>
       <nav class="px-2 pb-2 grid grid-cols-4 gap-2" id="tabs"></nav>
@@ -34,7 +34,7 @@
     // ==========================
     // CONFIG: Fontes (Google Sheets CSV publicados)
     // ==========================
-    const CSV_URLS = {
+    var CSV_URLS = {
       PP: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQi36jUxlUkQBmzYm7DpFG3HH9GQoiYbGdybwxf8mnYPjY3EDgrNnpCqu4BN9B7censF_2xcpH7WxZq/pub?gid=0&single=true&output=csv",
       PC: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQi36jUxlUkQBmzYm7DpFG3HH9GQoiYbGdybwxf8mnYPjY3EDgrNnpCqu4BN9B7censF_2xcpH7WxZq/pub?gid=1936904888&single=true&output=csv",
       INVA: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQi36jUxlUkQBmzYm7DpFG3HH9GQoiYbGdybwxf8mnYPjY3EDgrNnpCqu4BN9B7censF_2xcpH7WxZq/pub?gid=2094617121&single=true&output=csv"
@@ -43,7 +43,7 @@
     // ==========================
     // STATE
     // ==========================
-    const state = {
+    var state = {
       aba: "Inicial",
       form: { nomeAluno:"", canacAluno:"", dataVoo:"", fase:"PP", missoes:[""] },
       voo: { tipoVoo:"Local", aeronave:"", local:{}, navegacao:{} },
@@ -58,51 +58,49 @@
     // ==========================
     // LISTAS FIXAS (para seleção)
     // ==========================
-    const FASES = ["PP","PPR","PC","INVA","PLA"]; // PLA sem base
-    const MISSOES_POR_FASE = {
+    var FASES = ["PP","PPR","PC","INVA","PLA"]; // PLA sem base
+    var MISSOES_POR_FASE = {
       PP: ["PS-01","PS-02","PS-03","PS-04","PS-05","PS-06","PS-07","PS-08","PS-09","PS-10","PS-11","PS-12","PS-13","PS-14","PS-15","PS-16","PS-17","PS-X1","PS-18","AP-01","AP-02","AP-03","AP-04","AP-05","AP-06","AP-07","AP-08","AP-09","NV-01","NV-02","NV-03","NV-X1","NT-01","NT-02","NT-03","PRCQ","CQPP"],
       PPR: ["PS-03","PS-05","PS-07","PS-10","PS-15","PS-17","PS-X1","PS-18","AP-01","AP-05","AP-06","AP-07","AP-08","AP-09","NV-01","NV-02","NV-03","NV-X1","NT-01","NT-02","NT-03","PRCQ","CQPP"],
       PC: ["AD-01","AD-02","AD-03","AD-04","AD-05","AD-06","AD-07","AD-08","AP-01","AP-02","AP-03","AP-04","AP-05","AP-06","AP-07","AP-08","MB-01","MB-02","MB-03","MB-04","MB-05","MB-06","NV-01","NV-02","NV-03","NV-04","NV-05","NV-06","NV-07","NV-08","NV-09","NV-10","NV-11","NV-12","NV-13","NV-14","NV-15","NT-01","NT-02","NT-03","NT-04","NT-05","PRCQ","CQPP"],
       INVA: ["PI-01","PI-02","PI-03","PI-04","PI-05","PI-06","PI-07","PI-08","PI-09","PI-10","PI-11","PI-12","PI-13","PI-14","PI-15","PI-16","NV-01","NV-02","PRCQ","CQPP"],
       PLA: []
     };
-    const AERONAVES = ["PR-FLE","PR-FLD","PR-FLN","PT-MJF","PR-MGX","PR-FLM"];
-    const TIPOS_VOO = ["Local","Navegação"];
+    var AERONAVES = ["PR-FLE","PR-FLD","PR-FLN","PT-MJF","PR-MGX","PR-FLM"];
+    var TIPOS_VOO = ["Local","Navegação"];
 
     // ==========================
     // HORA ZULU helpers
     // ==========================
-    const pad2 = (n)=> String(n).padStart(2,"0");
-    const dateToZuluHM = (d)=> `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
-    const addMinutesZulu = (baseHM, minutes)=>{
-      const [h,m] = baseHM.split(":").map(Number);
-      const base = new Date(); base.setUTCHours(h, m, 0, 0);
-      const nd = new Date(base.getTime() + minutes*60*1000);
+    function pad2(n){ return String(n).padStart(2,'0'); }
+    function dateToZuluHM(d){ return pad2(d.getUTCHours())+":"+pad2(d.getUTCMinutes()); }
+    function addMinutesZulu(baseHM, minutes){
+      var parts = baseHM.split(":").map(Number);
+      var base = new Date(); base.setUTCHours(parts[0], parts[1], 0, 0);
+      var nd = new Date(base.getTime() + minutes*60*1000);
       return dateToZuluHM(nd);
-    };
-    const diffHMtoMinutes = (startHM, endHM)=>{
-      const [sh,sm] = startHM.split(":").map(Number);
-      const [eh,em] = endHM.split(":").map(Number);
-      let start = sh*60 + sm; let end = eh*60 + em; if (end < start) end += 24*60; // roll-over
+    }
+    function diffHMtoMinutes(startHM, endHM){
+      var s = startHM.split(":").map(Number);
+      var e = endHM.split(":").map(Number);
+      var start = s[0]*60 + s[1]; var end = e[0]*60 + e[1]; if (end < start) end += 24*60; // roll-over
       return end - start;
-    };
-    const minutesToHHMM = (mins)=> `${pad2(Math.floor(mins/60))}:${pad2(mins%60)}`;
+    }
+    function minutesToHHMM(mins){ return pad2(Math.floor(mins/60))+":"+pad2(mins%60); }
     function minutesToDecimalTenthsStr(mins){
-      const tenths = Math.floor(mins / 6); // trunc para 0,1h
-      return (tenths / 10).toFixed(1).replace(".", ",");
+      var tenths = Math.floor(mins / 6); // trunc para 0,1h
+      return (tenths/10).toFixed(1).replace('.', ',');
     }
 
     // ==========================
-    // CSV loader (Google Sheets)
+    // CSV loader (Google Sheets) — parser compatível
     // ==========================
     function parseCSV(text){
-      // Parser simples e robusto (suporta aspas, vírgulas em campos, CRLF)
-      const out = [];
-      let i=0, field='', row=[], inQuotes=false;
-      const pushField=()=>{ row.push(field); field=''; };
-      const pushRow=()=>{ if (row.length) out.push(row); row=[]; };
+      var out = [], i=0, field='', row=[], inQuotes=false;
+      function pushField(){ row.push(field); field=''; }
+      function pushRow(){ if(row.length){ out.push(row); } row=[]; }
       while(i < text.length){
-        const c = text[i];
+        var c = text[i];
         if (inQuotes){
           if (c==='"'){
             if (text[i+1]==='"'){ field+='"'; i++; } else { inQuotes=false; }
@@ -110,398 +108,377 @@
         } else {
           if (c==='"'){ inQuotes=true; }
           else if (c===','){ pushField(); }
-          else if (c==='
-'){ pushField(); pushRow(); }
-          else if (c==='
-'){ /* ignore */ }
+          else if (c==='\n'){ pushField(); pushRow(); }
+          else if (c==='\r'){ }
           else { field+=c; }
         }
         i++;
       }
       pushField(); pushRow();
-      // primeira linha = cabeçalho
-      const headers = (out.shift()||[]).map(h=>h.trim());
-      return out.filter(r=>r.some(x=>String(x).trim().length>0)).map(cols=>{
-        const obj={};
-        headers.forEach((h,idx)=> obj[h]= (cols[idx]||'').trim());
-        return obj;
-      });
+      var headers = (out.shift()||[]).map(function(h){ return h.trim(); });
+      return out.filter(function(r){ return r.some(function(x){ return String(x).trim().length>0; }); })
+               .map(function(cols){
+                 var obj={};
+                 headers.forEach(function(h,idx){ obj[h] = (cols[idx]||'').trim(); });
+                 return obj;
+               });
     }
 
     function normalizeRow(row){
-      // Esperado: codigo, tempo_voo, pousos, pre_requisitos, registro, competencias, conteudo
-      const splitList = (s)=> String(s||'').split(/\||;/).map(x=>x.trim()).filter(Boolean);
+      function splitList(s){ return String(s||'').split(/\||;/).map(function(x){return x.trim();}).filter(Boolean); }
       return {
         codigo: row.codigo || row.Codigo || row.CÓDIGO || row.code || row.CODIGO || '',
-        tempo_voo: row.tempo_voo || row["tempo de voo"] || row.tempo || '',
+        tempo_voo: row.tempo_voo || row['tempo de voo'] || row.tempo || '',
         pousos: Number(row.pousos || row.pouso || 0) || 0,
-        pre_requisitos: splitList(row.pre_requisitos || row["pre-requisitos"] || row.prerequisitos),
+        pre_requisitos: splitList(row.pre_requisitos || row['pre-requisitos'] || row.prerequisitos),
         registro: row.registro || row.reg || '',
-        competencias: splitList(row.competencias || row["competências"] || row.comp || ''),
-        conteudo: row.conteudo || row["conteúdo"] || row.manobras || ''
+        competencias: splitList(row.competencias || row['competências'] || row.comp || ''),
+        conteudo: row.conteudo || row['conteúdo'] || row.manobras || ''
       };
     }
 
-    async function loadDatasetFor(fase){
-      if (!CSV_URLS[fase] || state.loading[fase] || state.datasets[fase]) return;
-      state.loading[fase] = true; state.lastError = null;
-      try{
-        const res = await fetch(CSV_URLS[fase], { cache: 'no-cache' });
-        if (!res.ok) throw new Error('Falha ao baixar CSV: '+res.status);
-        const text = await res.text();
-        const rows = parseCSV(text).map(normalizeRow).filter(r=>r.codigo);
-        const map = {};
-        rows.forEach(r=>{ map[r.codigo] = {
+    function mergeRowsToMap(rows){
+      var map = {};
+      rows.forEach(function(r){
+        map[r.codigo] = {
           tempo_voo: r.tempo_voo,
           pousos: r.pousos,
           conteudo: [r.conteudo],
           pre_requisitos: r.pre_requisitos,
           registro: r.registro,
           competencias: r.competencias
-        }; });
-        state.datasets[fase] = map;
-      } catch(e){
-        state.lastError = String(e);
-      } finally {
-        state.loading[fase] = false;
-        render();
-      }
+        };
+      });
+      return map;
+    }
+
+    function loadDatasetFor(fase){
+      if (!CSV_URLS[fase] || state.loading[fase] || state.datasets[fase]) return;
+      state.loading[fase] = true; state.lastError = null;
+      fetch(CSV_URLS[fase], { cache: 'no-cache' })
+        .then(function(res){ if(!res.ok) throw new Error('Falha ao baixar CSV: '+res.status); return res.text(); })
+        .then(function(text){ var rows = parseCSV(text).map(normalizeRow).filter(function(r){return r.codigo;}); state.datasets[fase] = mergeRowsToMap(rows); })
+        .catch(function(e){ state.lastError = String(e); })
+        .finally(function(){ state.loading[fase] = false; render(); });
     }
 
     function datasetByFase(fase){
-      if (fase==="PC") return state.datasets.PC || {};
-      if (fase==="INVA") return state.datasets.INVA || {};
-      if (fase==="PP" || fase==="PPR") return state.datasets.PP || {};
+      if (fase==='PC') return state.datasets.PC || {};
+      if (fase==='INVA') return state.datasets.INVA || {};
+      if (fase==='PP' || fase==='PPR') return state.datasets.PP || {};
       return {};
     }
 
     // ==========================
     // WhatsApp
     // ==========================
-    async function shareWhatsApp(text){
-      try {
-        if (navigator.share && (!navigator.canShare || navigator.canShare({ text }))){
-          await navigator.share({ text });
-          return;
-        }
-      } catch {}
-      const url = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(text);
+    function shareWhatsApp(text){
+      try{
+        if (navigator.share && (!navigator.canShare || navigator.canShare({ text: text }))){ navigator.share({ text: text }); return; }
+      }catch(e){}
+      var url = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(text);
       window.open(url, '_blank');
     }
 
     function semicolonSplitToItems(raw){
-      const arr = Array.isArray(raw) ? raw : [String(raw||"")];
-      return arr.flatMap(s=> String(s).split(";")).map(x=>x.trim()).filter(Boolean);
+      var arr = Array.isArray(raw) ? raw : [String(raw||"")];
+      return arr.flatMap(function(s){ return String(s).split(";"); }).map(function(x){ return x.trim(); }).filter(Boolean);
     }
 
     // ==========================
     // UI helpers
     // ==========================
     function Field(label, inner){
-      return `<div class="flex flex-col gap-1"><label class="text-sm text-gray-700">${label}</label>${inner}</div>`;
+      return '<div class="flex flex-col gap-1"><label class="text-sm text-gray-700">'+label+'</label>'+inner+'</div>';
     }
-    function Select(options, value, attrs=""){
-      const opts = options.map(o=>`<option value="${o}" ${o===value?'selected':''}>${o}</option>`).join("");
-      return `<select ${attrs} class="w-full border rounded-xl p-3 pr-8 bg-white">${opts}</select>`;
+    function Select(options, value, attrs){
+      attrs = attrs||'';
+      var opts = options.map(function(o){ return '<option value="'+o+'" '+(o===value?'selected':'')+'>'+o+'</option>'; }).join('');
+      return '<select '+attrs+' class="w-full border rounded-xl p-3 pr-8 bg-white">'+opts+'</select>';
     }
-    function Input(value, attrs=""){
-      return `<input ${attrs} class="w-full border rounded-xl p-3 bg-white" value="${value||""}" />`;
+    function Input(value, attrs){
+      attrs = attrs||''; return '<input '+attrs+' class="w-full border rounded-xl p-3 bg-white" value="'+(value||'')+'" />';
     }
-    function TextArea(value, attrs=""){
-      return `<textarea ${attrs} class="w-full border rounded-2xl p-3 bg-white resize-none">${value||""}</textarea>`;
+    function TextArea(value, attrs){
+      attrs = attrs||''; return '<textarea '+attrs+' class="w-full border rounded-2xl p-3 bg-white resize-none">'+(value||'')+'</textarea>';
 
 ```
 }
 function TimeField(id, label, value){
-  const [hh="00", mm="00"] = String(value||"00:00").split(":").map(x=>pad2(+x||0));
-  const HOURS = Array.from({length:24}, (_,i)=>pad2(i)).map(h=>`<option value="${h}" ${h===hh?'selected':''}>${h}</option>`).join("");
-  const MINUTES = Array.from({length:60}, (_,i)=>pad2(i)).map(m=>`<option value="${m}" ${m===mm?'selected':''}>${m}</option>`).join("");
-  return `
-    <div class="flex flex-col gap-1">
-      <label class="text-sm text-gray-700">${label}</label>
-      <div class="flex items-center gap-2">
-        <select data-id="${id}" data-part="hh" class="border rounded-xl p-3">${HOURS}</select>
-        <span class="text-gray-500">:</span>
-        <select data-id="${id}" data-part="mm" class="border rounded-xl p-3">${MINUTES}</select>
-        <button type="button" data-id="${id}" data-action="nowz" class="ml-2 px-3 py-2 rounded-xl border bg-white text-xs">Agora (Z)</button>
-      </div>
-      <input type="hidden" id="${id}" value="${hh}:${mm}" />
-    </div>`;
+  var parts = String(value||'00:00').split(':');
+  var hh = pad2(+parts[0]||0), mm = pad2(+parts[1]||0);
+  var HOURS = Array.from({length:24}, function(_,i){return pad2(i);}).map(function(h){ return '<option value="'+h+'" '+(h===hh?'selected':'')+'>'+h+'</option>'; }).join('');
+  var MINUTES = Array.from({length:60}, function(_,i){return pad2(i);}).map(function(m){ return '<option value="'+m+'" '+(m===mm?'selected':'')+'>'+m+'</option>'; }).join('');
+  var html = ''+
+    '<div class="flex flex-col gap-1">'+
+      '<label class="text-sm text-gray-700">'+label+'</label>'+
+      '<div class="flex items-center gap-2">'+
+        '<select data-id="'+id+'" data-part="hh" class="border rounded-xl p-3">'+HOURS+'</select>'+
+        '<span class="text-gray-500">:</span>'+
+        '<select data-id="'+id+'" data-part="mm" class="border rounded-xl p-3">'+MINUTES+'</select>'+
+        '<button type="button" data-id="'+id+'" data-action="nowz" class="ml-2 px-3 py-2 rounded-xl border bg-white text-xs">Agora (Z)</button>'+
+      '</div>'+
+      '<input type="hidden" id="'+id+'" value="'+hh+':'+mm+'" />'+
+    '</div>';
+  return html;
 }
 function bindTimeField(id, onChange){
-  const hh = document.querySelector(`select[data-id="${id}"][data-part="hh"]`);
-  const mm = document.querySelector(`select[data-id="${id}"][data-part="mm"]`);
-  const hidden = document.getElementById(id);
-  const btn = document.querySelector(`button[data-id="${id}"][data-action="nowz"]`);
-  function update(){ hidden.value = `${hh.value}:${mm.value}`; hidden.dispatchEvent(new Event('change')); }
+  var hh = document.querySelector('select[data-id="'+id+'"][data-part="hh"]');
+  var mm = document.querySelector('select[data-id="'+id+'"][data-part="mm"]');
+  var hidden = document.getElementById(id);
+  var btn = document.querySelector('button[data-id="'+id+'"][data-action="nowz"]');
+  function update(){ hidden.value = hh.value+':'+mm.value; hidden.dispatchEvent(new Event('change')); }
   if (hh) hh.onchange = update;
   if (mm) mm.onchange = update;
-  if (hidden) hidden.addEventListener('change', ()=> { onChange(hidden.value); render(); });
-  if (btn) btn.onclick = ()=>{ const n=new Date(); hh.value=pad2(n.getUTCHours()); mm.value=pad2(n.getUTCMinutes()); update(); };
+  if (hidden) hidden.addEventListener('change', function(){ onChange(hidden.value); render(); });
+  if (btn) btn.onclick = function(){ var n=new Date(); hh.value=pad2(n.getUTCHours()); mm.value=pad2(n.getUTCMinutes()); update(); };
 }
 
 // ==========================
 // Páginas
 // ==========================
 function PageInicial(){
-  const todayISO = new Date().toISOString().slice(0,10);
+  var todayISO = new Date().toISOString().slice(0,10);
   if (!state.form.dataVoo) state.form.dataVoo = todayISO;
-  const missoes = (state.form.missoes||[]).map((m,idx)=>`
-    <div class="p-3 rounded-2xl border shadow-sm bg-white flex items-center gap-3">
-      ${Select(["",...MISSOES_POR_FASE[state.form.fase||"PP"]], m, `data-ev="missao" data-idx="${idx}"`)}
-      <button class="ml-auto text-sm text-red-600" data-ev="remove-missao" data-idx="${idx}">Remover</button>
-    </div>`).join("");
-  return `
-    <div class="p-4 flex flex-col gap-4">
-      <div class="grid grid-cols-1 gap-4">
-        ${Field("Nome do Aluno", Input(state.form.nomeAluno, `data-ev="nomeAluno" placeholder="Digite o nome"`))}
-        ${Field("CANAC do Aluno", Input(state.form.canacAluno, `data-ev="canacAluno" placeholder="Ex.: 123456"`))}
-        ${Field("Data do Voo", `<input type="date" class="w-full border rounded-xl p-3" value="${state.form.dataVoo||todayISO}" data-ev="dataVoo" />`)}
-        ${Field("Fase da Instrução", Select(FASES, state.form.fase||"PP", `data-ev="fase"`))}
-      </div>
-      <div class="mt-2">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-sm text-gray-700">Missões</span>
-          <button class="px-3 py-1 rounded-xl bg-black text-white" data-ev="add-missao">+ Adicionar</button>
-        </div>
-        <div class="flex flex-col gap-3">${missoes}</div>
-      </div>
-    </div>`;
+  var missoes = (state.form.missoes||[]).map(function(m,idx){
+    return '<div class="p-3 rounded-2xl border shadow-sm bg-white flex items-center gap-3">'+
+      Select([""].concat(MISSOES_POR_FASE[state.form.fase||'PP']), m, 'data-ev="missao" data-idx="'+idx+'"')+
+      '<button class="ml-auto text-sm text-red-600" data-ev="remove-missao" data-idx="'+idx+'">Remover</button>'+
+    '</div>';
+  }).join('');
+  return ''+
+    '<div class="p-4 flex flex-col gap-4">'+
+      '<div class="grid grid-cols-1 gap-4">'+
+        Field('Nome do Aluno', Input(state.form.nomeAluno, 'data-ev="nomeAluno" placeholder="Digite o nome"'))+
+        Field('CANAC do Aluno', Input(state.form.canacAluno, 'data-ev="canacAluno" placeholder="Ex.: 123456"'))+
+        Field('Data do Voo', '<input type="date" class="w-full border rounded-xl p-3" value="'+(state.form.dataVoo||todayISO)+'" data-ev="dataVoo" />')+
+        Field('Fase da Instrução', Select(FASES, state.form.fase||'PP', 'data-ev="fase"'))+
+      '</div>'+
+      '<div class="mt-2">'+
+        '<div class="flex items-center justify-between mb-2">'+
+          '<span class="text-sm text-gray-700">Missões</span>'+
+          '<button class="px-3 py-1 rounded-xl bg-black text-white" data-ev="add-missao">+ Adicionar</button>'+
+        '</div>'+
+        '<div class="flex flex-col gap-3">'+missoes+'</div>'+
+      '</div>'+
+    '</div>';
 }
 
 function pageInfoResultados(){
-  if ((state.voo.tipoVoo||"Local")==="Local"){
-    const minsTotal = diffHMtoMinutes(state.voo.local?.acionamento||"00:00", state.voo.local?.corte||"00:00");
-    const minsVoo   = diffHMtoMinutes(state.voo.local?.decolagem  ||"00:00", state.voo.local?.pouso  ||"00:00");
+  if ((state.voo.tipoVoo||'Local')==='Local'){
+    var minsTotal = diffHMtoMinutes(state.voo.local&&state.voo.local.acionamento||'00:00', state.voo.local&&state.voo.local.corte||'00:00');
+    var minsVoo   = diffHMtoMinutes(state.voo.local&&state.voo.local.decolagem  ||'00:00', state.voo.local&&state.voo.local.pouso  ||'00:00');
     return { totalHHMM: minutesToHHMM(minsTotal), totalDecimal: minutesToDecimalTenthsStr(minsTotal), vooHHMM: minutesToHHMM(minsVoo), vooDecimal: minutesToDecimalTenthsStr(minsVoo), pernas:[] };
   } else {
-    const acion = state.voo.navegacao?.acionamento || "00:00";
-    const corte = state.voo.navegacao?.corte || "00:00";
-    const minsTotal = diffHMtoMinutes(acion, corte);
-    const pernas = (state.voo.navegacao?.perna||[]).map(p=>{
-      const mm = diffHMtoMinutes(p.decolagem||"00:00", p.pouso||"00:00");
-      return { ...p, hhmm: minutesToHHMM(mm), dec: minutesToDecimalTenthsStr(mm) };
+    var acion = state.voo.navegacao&&state.voo.navegacao.acionamento || '00:00';
+    var corte = state.voo.navegacao&&state.voo.navegacao.corte || '00:00';
+    var minsTotal2 = diffHMtoMinutes(acion, corte);
+    var pernas = (state.voo.navegacao&&state.voo.navegacao.perna||[]).map(function(p){
+      var mm = diffHMtoMinutes(p.decolagem||'00:00', p.pouso||'00:00');
+      return { decolagem:p.decolagem, pouso:p.pouso, hhmm: minutesToHHMM(mm), dec: minutesToDecimalTenthsStr(mm) };
     });
-    return { totalHHMM: minutesToHHMM(minsTotal), totalDecimal: minutesToDecimalTenthsStr(minsTotal), vooHHMM:null, vooDecimal:null, pernas };
+    return { totalHHMM: minutesToHHMM(minsTotal2), totalDecimal: minutesToDecimalTenthsStr(minsTotal2), vooHHMM:null, vooDecimal:null, pernas:pernas };
   }
 }
 
 function PageInfoVoo(){
-  const nowHM = dateToZuluHM(new Date());
-  if (!state.voo.local?.acionamento && state.voo.tipoVoo!=="Navegação"){
-    const acion = nowHM, deco = addMinutesZulu(acion,10), pouso = addMinutesZulu(acion,55), corte = addMinutesZulu(acion,60);
+  var nowHM = dateToZuluHM(new Date());
+  if (!state.voo.local || !state.voo.local.acionamento && state.voo.tipoVoo!=='Navegação'){
+    var acion = nowHM, deco = addMinutesZulu(acion,10), pouso = addMinutesZulu(acion,55), corte = addMinutesZulu(acion,60);
     state.voo = {
-      aeronave: state.voo.aeronave||"",
-      tipoVoo: state.voo.tipoVoo||"Local",
-      local: { acionamento: acion, decolagem: deco, pouso, corte },
-      navegacao: state.voo.navegacao || { acionamento: acion, perna: [{ decolagem: deco, pouso: addMinutesZulu(deco,30)}], corte }
+      aeronave: state.voo.aeronave||'',
+      tipoVoo: state.voo.tipoVoo||'Local',
+      local: { acionamento: acion, decolagem: deco, pouso: pouso, corte: corte },
+      navegacao: state.voo.navegacao || { acionamento: acion, perna: [{ decolagem: deco, pouso: addMinutesZulu(deco,30)}], corte: corte }
     };
   }
-  const tipoLocal = `
-    ${TimeField("l-acion","Acionamento (Zulu)", state.voo.local?.acionamento||"")}
-    ${TimeField("l-decol","Decolagem (Zulu)", state.voo.local?.decolagem||"")}
-    ${TimeField("l-pouso","Pouso (Zulu)", state.voo.local?.pouso||"")}
-    ${TimeField("l-corte","Corte (Zulu)", state.voo.local?.corte||"")}
-  `;
-  const pernas = (state.voo.navegacao?.perna||[]).map((p,idx)=>`
-    <div class="p-3 rounded-2xl border bg-white shadow-sm">
-      <div class="flex items-center justify-between mb-2">
-        <span class="text-sm font-medium">Perna ${idx+1}</span>
-        <button class="text-xs text-red-600" data-ev="remove-perna" data-idx="${idx}">Remover</button>
-      </div>
-      <div class="grid grid-cols-1 gap-3">
-        ${TimeField(`n-dec-${idx}`,"Decolagem (Zulu)", p.decolagem)}
-        ${TimeField(`n-pou-${idx}`,"Pouso (Zulu)", p.pouso)}
-      </div>
-    </div>
-  `).join("");
-  const tipoNav = `
-    ${TimeField("n-acion","Acionamento (Zulu)", state.voo.navegacao?.acionamento||"")}
-    ${pernas}
-    <button class="w-full rounded-2xl bg-black text-white py-2" data-ev="add-perna">+ Adicionar Decolagem/Pouso</button>
-    ${TimeField("n-corte","Corte (Zulu)", state.voo.navegacao?.corte||"")}
-  `;
+  var tipoLocal = ''+
+    TimeField('l-acion','Acionamento (Zulu)', state.voo.local&&state.voo.local.acionamento||'')+
+    TimeField('l-decol','Decolagem (Zulu)', state.voo.local&&state.voo.local.decolagem||'')+
+    TimeField('l-pouso','Pouso (Zulu)', state.voo.local&&state.voo.local.pouso||'')+
+    TimeField('l-corte','Corte (Zulu)', state.voo.local&&state.voo.local.corte||'');
 
-  const r = pageInfoResultados();
+  var pernas = (state.voo.navegacao&&state.voo.navegacao.perna||[]).map(function(p,idx){
+    return ''+
+      '<div class="p-3 rounded-2xl border bg-white shadow-sm">'+
+        '<div class="flex items-center justify-between mb-2">'+
+          '<span class="text-sm font-medium">Perna '+(idx+1)+'</span>'+
+          '<button class="text-xs text-red-600" data-ev="remove-perna" data-idx="'+idx+'">Remover</button>'+
+        '</div>'+
+        '<div class="grid grid-cols-1 gap-3">'+
+          TimeField('n-dec-'+idx,'Decolagem (Zulu)', p.decolagem)+
+          TimeField('n-pou-'+idx,'Pouso (Zulu)', p.pouso)+
+        '</div>'+
+      '</div>';
+  }).join('');
 
-  return `
-    <div class="p-4 flex flex-col gap-4">
-      <div class="grid grid-cols-1 gap-4">
-        ${Field("Aeronave", Select(["",...AERONAVES], state.voo.aeronave||"", `data-ev="aeronave"`))}
-        ${Field("Tipo de Voo", Select(TIPOS_VOO, state.voo.tipoVoo||"Local", `data-ev="tipoVoo"`))}
-      </div>
-      ${(state.voo.tipoVoo||"Local")==="Local" ? `<div class="grid grid-cols-1 gap-3">${tipoLocal}</div>` : `<div class="grid grid-cols-1 gap-3">${tipoNav}</div>`}
-      <div class="mt-2 p-3 rounded-2xl bg-gray-50 border">
-        <div class="text-sm text-gray-600 mb-1">Somatórios</div>
-        <div class="text-sm">Total (Acionamento → Corte): <b>${r.totalHHMM}</b> – <b>${r.totalDecimal} h</b></div>
-        ${(state.voo.tipoVoo||"Local")==="Local"
-          ? `<div class="text-sm">Decolagem → Pouso: <b>${r.vooHHMM}</b> – <b>${r.vooDecimal} h</b></div>`
-          : `<div class="text-sm flex flex-col gap-1">${r.pernas.map((p,i)=>`<div>Perna ${i+1} (Dec→Pou): <b>${p.hhmm}</b> – <b>${p.dec} h</b></div>`).join("")}</div>`
-        }
-      </div>
-      <div class="sticky bottom-3 p-4 rounded-2xl bg-black text-white text-center text-xl tracking-wider">
-        Horário Zulu: <b id="clockZulu">${state.clockZulu}Z</b>
-      </div>
-    </div>`;
+  var tipoNav = ''+
+    TimeField('n-acion','Acionamento (Zulu)', state.voo.navegacao&&state.voo.navegacao.acionamento||'')+
+    pernas+
+    '<button class="w-full rounded-2xl bg-black text-white py-2" data-ev="add-perna">+ Adicionar Decolagem/Pouso</button>'+
+    TimeField('n-corte','Corte (Zulu)', state.voo.navegacao&&state.voo.navegacao.corte||'');
+
+  var r = pageInfoResultados();
+
+  return ''+
+    '<div class="p-4 flex flex-col gap-4">'+
+      '<div class="grid grid-cols-1 gap-4">'+
+        Field('Aeronave', Select([""].concat(AERONAVES), state.voo.aeronave||'', 'data-ev="aeronave"'))+
+        Field('Tipo de Voo', Select(TIPOS_VOO, state.voo.tipoVoo||'Local', 'data-ev="tipoVoo"'))+
+      '</div>'+
+      (((state.voo.tipoVoo||'Local')==='Local') ? '<div class="grid grid-cols-1 gap-3">'+tipoLocal+'</div>' : '<div class="grid grid-cols-1 gap-3">'+tipoNav+'</div>')+
+      '<div class="mt-2 p-3 rounded-2xl bg-gray-50 border">'+
+        '<div class="text-sm text-gray-600 mb-1">Somatórios</div>'+
+        '<div class="text-sm">Total (Acionamento → Corte): <b>'+r.totalHHMM+'</b> – <b>'+r.totalDecimal+' h</b></div>'+
+        (((state.voo.tipoVoo||'Local')==='Local')
+          ? '<div class="text-sm">Decolagem → Pouso: <b>'+r.vooHHMM+'</b> – <b>'+r.vooDecimal+' h</b></div>'
+          : '<div class="text-sm flex flex-col gap-1">'+(r.pernas||[]).map(function(p,i){return '<div>Perna '+(i+1)+' (Dec→Pou): <b>'+p.hhmm+'</b> – <b>'+p.dec+' h</b></div>';}).join('')+'</div>'
+        )+
+      '</div>'+
+      '<div class="sticky bottom-3 p-4 rounded-2xl bg-black text-white text-center text-xl tracking-wider">'+
+        'Horário Zulu: <b id="clockZulu">'+state.clockZulu+'Z</b>'+
+      '</div>'+
+    '</div>';
 }
 
 function PageFichaTecnica(){
-  const fase = state.form.fase;
-  // Gatilho de carregamento lazy
+  var fase = state.form.fase;
   loadDatasetFor(fase);
-  const ds = datasetByFase(fase);
-  const cods = (state.form.missoes||[]).filter(Boolean);
-  const infos = cods.map(code=>({ code, data: ds?.[code] }));
-  const loading = state.loading.PP || state.loading.PC || state.loading.INVA;
-
-  const itens = infos.map(m=>`
-    <div class="p-4 rounded-2xl border bg-white shadow-sm">
-      <div class="text-lg font-semibold mb-2">Missão: ${m.code}</div>
-      ${!m.data ? `<div class="text-sm text-red-600">${state.lastError?('Erro: '+state.lastError):'Carregando ou não encontrado na base.'}</div>` : `
-        <div class="flex flex-col gap-2 text-sm">
-          <div><b>Tempo de Voo:</b> ${m.data.tempo_voo||"-"}</div>
-          <div><b>Pousos:</b> ${m.data.pousos ?? "-"}</div>
-          <div><b>Pré-requisitos:</b> ${(m.data.pre_requisitos||[]).join(", ") || "-"}</div>
-          <div><b>Registro:</b> ${m.data.registro || "-"}</div>
-          <div><b>Competências:</b> ${(m.data.competencias||[]).join(", ") || "-"}</div>
-          <div>
-            <b>Conteúdo / Manobras:</b>
-            <div class="mt-1">Missão ${m.code}</div>
-            <ul class="ml-5">${semicolonSplitToItems(m.data.conteudo).map((c,i,arr)=>`<li>- ${c}${i<arr.length-1?';':''}</li>`).join("")}</ul>
-          </div>
-        </div>`}
-    </div>
-  `).join("");
-
-  return `
-    <div class="p-4 flex flex-col gap-4">
-      ${loading? '<div class="text-sm text-gray-500">Carregando dados…</div>': ''}
-      ${infos.length===0 ? `<div class="text-sm text-gray-500">Selecione ao menos uma missão na página inicial.</div>` : ""}
-      ${itens}
-    </div>`;
+  var ds = datasetByFase(fase);
+  var cods = (state.form.missoes||[]).filter(Boolean);
+  var infos = cods.map(function(code){ return { code: code, data: ds[code] }; });
+  var loading = state.loading.PP || state.loading.PC || state.loading.INVA;
+  var itens = infos.map(function(m){
+    return ''+
+    '<div class="p-4 rounded-2xl border bg-white shadow-sm">'+
+      '<div class="text-lg font-semibold mb-2">Missão: '+m.code+'</div>'+
+      (!m.data ? '<div class="text-sm text-red-600">'+(state.lastError?('Erro: '+state.lastError):'Carregando ou não encontrado na base.')+'</div>' :
+        '<div class="flex flex-col gap-2 text-sm">'+
+          '<div><b>Tempo de Voo:</b> '+(m.data.tempo_voo||'-')+'</div>'+
+          '<div><b>Pousos:</b> '+(m.data.pousos!=null?m.data.pousos:'-')+'</div>'+
+          '<div><b>Pré-requisitos:</b> '+((m.data.pre_requisitos||[]).join(', ')||'-')+'</div>'+
+          '<div><b>Registro:</b> '+(m.data.registro||'-')+'</div>'+
+          '<div><b>Competências:</b> '+((m.data.competencias||[]).join(', ')||'-')+'</div>'+
+          '<div>'+
+            '<b>Conteúdo / Manobras:</b>'+
+            '<div class="mt-1">Missão '+m.code+'</div>'+
+            '<ul class="ml-5">'+semicolonSplitToItems(m.data.conteudo).map(function(c,i,arr){return '<li>- '+c+(i<arr.length-1?';':'')+'</li>';}).join('')+'</ul>'+
+          '</div>'+
+        '</div>'
+      )+
+    '</div>';
+  }).join('');
+  return '<div class="p-4 flex flex-col gap-4">'+(loading?'<div class="text-sm text-gray-500">Carregando dados…</div>':'')+(infos.length===0 ? '<div class="text-sm text-gray-500">Selecione ao menos uma missão na página inicial.</div>' : '')+itens+'</div>';
 }
 
 function buildInfoVooReport(){
-  const r = pageInfoResultados();
-  const tipo = state.voo.tipoVoo || "Local";
-  const linhas = [];
-  if (tipo === "Local"){
-    linhas.push("Informações do voo (Local)");
-    linhas.push(`Aeronave: ${state.voo.aeronave || '-'}`);
-    linhas.push(`Acionamento: ${state.voo.local?.acionamento || '-'}`);
-    linhas.push(`Decolagem: ${state.voo.local?.decolagem || '-'}`);
-    linhas.push(`Pouso: ${state.voo.local?.pouso || '-'}`);
-    linhas.push(`Corte: ${state.voo.local?.corte || '-'}`);
-    linhas.push(`Total (Acion→Corte): ${r.totalHHMM} — ${r.totalDecimal} h`);
-    linhas.push(`Decol→Pouso: ${r.vooHHMM} — ${r.vooDecimal} h`);
+  var r = pageInfoResultados();
+  var tipo = state.voo.tipoVoo || 'Local';
+  var linhas = [];
+  if (tipo === 'Local'){
+    linhas.push('Informações do voo (Local)');
+    linhas.push('Aeronave: '+(state.voo.aeronave || '-'));
+    linhas.push('Acionamento: '+(state.voo.local&&state.voo.local.acionamento || '-'));
+    linhas.push('Decolagem: '+(state.voo.local&&state.voo.local.decolagem || '-'));
+    linhas.push('Pouso: '+(state.voo.local&&state.voo.local.pouso || '-'));
+    linhas.push('Corte: '+(state.voo.local&&state.voo.local.corte || '-'));
+    linhas.push('Total (Acion→Corte): '+r.totalHHMM+' — '+r.totalDecimal+' h');
+    linhas.push('Decol→Pouso: '+r.vooHHMM+' — '+r.vooDecimal+' h');
   } else {
-    linhas.push("Informações do voo (Navegação)");
-    linhas.push(`Aeronave: ${state.voo.aeronave || '-'}`);
-    linhas.push(`Acionamento: ${state.voo.navegacao?.acionamento || '-'}`);
-    (r.pernas||[]).forEach((p,i)=>{
-      linhas.push(`Perna ${i+1} — Decolagem: ${p.decolagem} | Pouso: ${p.pouso} | Duração: ${p.hhmm} — ${p.dec} h`);
+    linhas.push('Informações do voo (Navegação)');
+    linhas.push('Aeronave: '+(state.voo.aeronave || '-'));
+    linhas.push('Acionamento: '+(state.voo.navegacao&&state.voo.navegacao.acionamento || '-'));
+    (r.pernas||[]).forEach(function(p,i){
+      linhas.push('Perna '+(i+1)+' — Decolagem: '+p.decolagem+' | Pouso: '+p.pouso+' | Duração: '+p.hhmm+' — '+p.dec+' h');
     });
-    linhas.push(`Corte: ${state.voo.navegacao?.corte || '-'}`);
-    linhas.push(`Total (Acion→Corte): ${r.totalHHMM} — ${r.totalDecimal} h`);
+    linhas.push('Corte: '+(state.voo.navegacao&&state.voo.navegacao.corte || '-'));
+    linhas.push('Total (Acion→Corte): '+r.totalHHMM+' — '+r.totalDecimal+' h');
   }
-  return linhas.join('
-```
-
-');
+  return linhas.join('\n');
 }
 
-```
 function PageCheckout(){
-  const fase = state.form.fase;
-  loadDatasetFor(fase); // garante base para pré-preencher
-  const ds = datasetByFase(fase);
-  const cods = (state.form.missoes||[]).filter(Boolean);
+  var fase = state.form.fase;
+  loadDatasetFor(fase);
+  var ds = datasetByFase(fase);
+  var cods = (state.form.missoes||[]).filter(Boolean);
   if (!state._checkoutInit){
-    const linhas=[];
-    cods.forEach(code=>{
-      const d = ds?.[code];
-      linhas.push(`Missão ${code}`);
+    var linhas=[];
+    cods.forEach(function(code){
+      var d = ds[code];
+      linhas.push('Missão '+code);
       if (d && d.conteudo){
-        const itens = semicolonSplitToItems(d.conteudo);
-        itens.forEach((it,idx)=> linhas.push(`- ${it}${idx<itens.length-1?';':''}`));
+        var itens = semicolonSplitToItems(d.conteudo);
+        itens.forEach(function(it,idx){ linhas.push('- '+it+(idx<itens.length-1?';':'')); });
       }
-      linhas.push("");
+      linhas.push('');
     });
-    if (linhas.length) state.checkoutTexto = linhas.join("
-```
-
-");
-state._checkoutInit = true;
+    if (linhas.length) state.checkoutTexto = linhas.join('\n');
+    state._checkoutInit = true;
+  }
+  var headerH = 56 + 48, footerH = 56, padding = 24 + 48;
+  var vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+  var taHeight = Math.max(200, vh - headerH - footerH - padding);
+  return ''+
+    '<div class="p-4 flex flex-col gap-3">'+
+      '<div class="text-sm text-gray-600">Escreva aqui sua avaliação (livre). O texto vem pré-preenchido com o descritivo da(s) missão(ões), podendo ser editado.</div>'+
+      '<div class="flex gap-2 mb-2">'+
+        '<button class="px-3 py-2 rounded-xl bg-black text-white text-xs" data-ev="share-checkout">Compartilhar WhatsApp</button>'+
+      '</div>'+
+      TextArea(state.checkoutTexto, 'data-ev="checkout-texto" style="height:'+taHeight+'px"')+
+    '</div>';
 }
-// Altura do textarea até o rodapé
-const headerH = 56 + 48, footerH = 56, padding = 24 + 48;
-const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
-const taHeight = Math.max(200, vh - headerH - footerH - padding);
-return `        <div class="p-4 flex flex-col gap-3">           <div class="text-sm text-gray-600">Escreva aqui sua avaliação (livre). O texto vem pré-preenchido com o descritivo da(s) missão(ões), podendo ser editado.</div>           <div class="flex gap-2 mb-2">             <button class="px-3 py-2 rounded-xl bg-black text-white text-xs" data-ev="share-checkout">Compartilhar WhatsApp</button>           </div>
-          ${TextArea(state.checkoutTexto,`data-ev="checkout-texto" style="height:${taHeight}px"`)}         </div>`;
-}
 
-```
 // ==========================
 // Render & Bindings
 // ==========================
 function render(){
-  const tabs = ["Inicial","Informações do voo","Ficha Técnica","Check-out"];
-  document.getElementById("tabs").innerHTML = tabs.map(t=>
-    `<button data-aba="${t}" class="py-2 rounded-2xl text-sm ${state.aba===t?'bg-black text-white':'bg-gray-200 text-gray-800'}">${t}</button>`
-  ).join("");
-  const app = document.getElementById("app");
-  app.innerHTML = state.aba==="Inicial" ? PageInicial()
-                : state.aba==="Informações do voo" ? PageInfoVoo()
-                : state.aba==="Ficha Técnica" ? PageFichaTecnica()
+  var tabs = ["Inicial","Informações do voo","Ficha Técnica","Check-out"];
+  document.getElementById('tabs').innerHTML = tabs.map(function(t){
+    return '<button data-aba="'+t+'" class="py-2 rounded-2xl text-sm '+(state.aba===t?'bg-black text-white':'bg-gray-200 text-gray-800')+'">'+t+'</button>';
+  }).join('');
+  var app = document.getElementById('app');
+  app.innerHTML = state.aba==='Inicial' ? PageInicial()
+                : state.aba==='Informações do voo' ? PageInfoVoo()
+                : state.aba==='Ficha Técnica' ? PageFichaTecnica()
                 : PageCheckout();
   bind();
 }
 
 function bind(){
   // tabs
-  document.querySelectorAll('[data-aba]').forEach(b=>{
-    b.onclick = ()=> { state.aba = b.getAttribute('data-aba'); if (state.aba!=="Check-out") state._checkoutInit = false; render(); };
-  });
+  document.querySelectorAll('[data-aba]').forEach(function(b){ b.onclick = function(){ state.aba = b.getAttribute('data-aba'); if (state.aba!=='Check-out') state._checkoutInit = false; render(); }; });
   // Inicial
-  const set = (k)=> (e)=> state.form[k] = e.target.value;
-  document.querySelectorAll('[data-ev="nomeAluno"]').forEach(el=> el.oninput = set('nomeAluno'));
-  document.querySelectorAll('[data-ev="canacAluno"]').forEach(el=> el.oninput = set('canacAluno'));
-  document.querySelectorAll('[data-ev="dataVoo"]').forEach(el=> el.oninput = set('dataVoo'));
-  const fase = document.querySelector('[data-ev="fase"]'); if (fase) fase.onchange = (e)=>{ state.form.fase = e.target.value; state.form.missoes=[""]; render(); };
-  document.querySelectorAll('[data-ev="missao"]').forEach(el=> el.onchange = (e)=>{ const idx=+el.getAttribute('data-idx'); state.form.missoes[idx]=e.target.value; });
-  const addM = document.querySelector('[data-ev="add-missao"]'); if (addM) addM.onclick = ()=> { state.form.missoes.push(""); render(); };
-  document.querySelectorAll('[data-ev="remove-missao"]').forEach(el=> el.onclick = ()=>{ const idx=+el.getAttribute('data-idx'); state.form.missoes = state.form.missoes.filter((_,i)=>i!==idx); render(); });
+  function set(k){ return function(e){ state.form[k] = e.target.value; }; }
+  document.querySelectorAll('[data-ev="nomeAluno"]').forEach(function(el){ el.oninput = set('nomeAluno'); });
+  document.querySelectorAll('[data-ev="canacAluno"]').forEach(function(el){ el.oninput = set('canacAluno'); });
+  document.querySelectorAll('[data-ev="dataVoo"]').forEach(function(el){ el.oninput = set('dataVoo'); });
+  var fase = document.querySelector('[data-ev="fase"]'); if (fase) fase.onchange = function(e){ state.form.fase = e.target.value; state.form.missoes=['']; render(); };
+  document.querySelectorAll('[data-ev="missao"]').forEach(function(el){ el.onchange = function(e){ var idx=+el.getAttribute('data-idx'); state.form.missoes[idx]=e.target.value; }; });
+  var addM = document.querySelector('[data-ev="add-missao"]'); if (addM) addM.onclick = function(){ state.form.missoes.push(''); render(); };
+  document.querySelectorAll('[data-ev="remove-missao"]').forEach(function(el){ el.onclick = function(){ var idx=+el.getAttribute('data-idx'); state.form.missoes = state.form.missoes.filter(function(_,i){ return i!==idx; }); render(); }; });
   // Info voo
-  const aer = document.querySelector('[data-ev="aeronave"]'); if (aer) aer.onchange = (e)=> { state.voo.aeronave = e.target.value; };
-  const tipo = document.querySelector('[data-ev="tipoVoo"]'); if (tipo) tipo.onchange = (e)=> { state.voo.tipoVoo = e.target.value; render(); };
-  bindTimeField("l-acion", v=> state.voo.local={...(state.voo.local||{}), acionamento:v});
-  bindTimeField("l-decol", v=> state.voo.local={...(state.voo.local||{}), decolagem:v});
-  bindTimeField("l-pouso", v=> state.voo.local={...(state.voo.local||{}), pouso:v});
-  bindTimeField("l-corte", v=> state.voo.local={...(state.voo.local||{}), corte:v});
-  bindTimeField("n-acion", v=> state.voo.navegacao={...(state.voo.navegacao||{}), acionamento:v});
-  bindTimeField("n-corte", v=> state.voo.navegacao={...(state.voo.navegacao||{}), corte:v});
-  const addP = document.querySelector('[data-ev="add-perna"]'); if (addP) addP.onclick = ()=>{ const per = state.voo.navegacao?.perna || []; const last = per[per.length-1] || { decolagem: state.voo.navegacao?.acionamento || "00:00", pouso: addMinutesZulu(state.voo.navegacao?.acionamento || "00:00", 30) }; const nextDec = addMinutesZulu(last.pouso, 30); const nextPou = addMinutesZulu(nextDec, 30); state.voo.navegacao = { ...(state.voo.navegacao||{}), perna: [...per, { decolagem: nextDec, pouso: nextPou }] }; render(); };
-  document.querySelectorAll('[data-ev="remove-perna"]').forEach(el=> el.onclick = ()=>{ const idx = +el.getAttribute('data-idx'); const per = [...(state.voo.navegacao?.perna||[])]; per.splice(idx,1); state.voo.navegacao = { ...(state.voo.navegacao||{}), perna: per }; render(); });
-  (state.voo.navegacao?.perna||[]).forEach((p,idx)=>{ bindTimeField(`n-dec-${idx}`, v=>{ const per=[...(state.voo.navegacao?.perna||[])]; per[idx]={...per[idx], decolagem:v}; state.voo.navegacao={...(state.voo.navegacao||{}), perna:per}; }); bindTimeField(`n-pou-${idx}`, v=>{ const per=[...(state.voo.navegacao?.perna||[])]; per[idx]={...per[idx], pouso:v}; state.voo.navegacao={...(state.voo.navegacao||{}), perna:per}; }); });
+  var aer = document.querySelector('[data-ev="aeronave"]'); if (aer) aer.onchange = function(e){ state.voo.aeronave = e.target.value; };
+  var tipo = document.querySelector('[data-ev="tipoVoo"]'); if (tipo) tipo.onchange = function(e){ state.voo.tipoVoo = e.target.value; render(); };
+  bindTimeField('l-acion', function(v){ state.voo.local=Object.assign({},state.voo.local||{}, { acionamento:v }); });
+  bindTimeField('l-decol', function(v){ state.voo.local=Object.assign({},state.voo.local||{}, { decolagem:v }); });
+  bindTimeField('l-pouso', function(v){ state.voo.local=Object.assign({},state.voo.local||{}, { pouso:v }); });
+  bindTimeField('l-corte', function(v){ state.voo.local=Object.assign({},state.voo.local||{}, { corte:v }); });
+  bindTimeField('n-acion', function(v){ state.voo.navegacao=Object.assign({},state.voo.navegacao||{}, { acionamento:v }); });
+  bindTimeField('n-corte', function(v){ state.voo.navegacao=Object.assign({},state.voo.navegacao||{}, { corte:v }); });
+  var addP = document.querySelector('[data-ev="add-perna"]'); if (addP) addP.onclick = function(){ var per = (state.voo.navegacao&&state.voo.navegacao.perna)||[]; var last = per[per.length-1] || { decolagem: (state.voo.navegacao&&state.voo.navegacao.acionamento)||'00:00', pouso: addMinutesZulu((state.voo.navegacao&&state.voo.navegacao.acionamento)||'00:00', 30) }; var nextDec = addMinutesZulu(last.pouso, 30); var nextPou = addMinutesZulu(nextDec, 30); state.voo.navegacao = Object.assign({},state.voo.navegacao||{}, { perna: per.concat([{ decolagem: nextDec, pouso: nextPou }]) }); render(); };
+  document.querySelectorAll('[data-ev="remove-perna"]').forEach(function(el){ el.onclick = function(){ var idx = +el.getAttribute('data-idx'); var per = ((state.voo.navegacao&&state.voo.navegacao.perna)||[]).slice(); per.splice(idx,1); state.voo.navegacao = Object.assign({},state.voo.navegacao||{}, { perna: per }); render(); }; });
+  (state.voo.navegacao&&state.voo.navegacao.perna||[]).forEach(function(p,idx){ bindTimeField('n-dec-'+idx, function(v){ var per=((state.voo.navegacao&&state.voo.navegacao.perna)||[]).slice(); per[idx]=Object.assign({},per[idx], { decolagem:v }); state.voo.navegacao=Object.assign({},state.voo.navegacao||{}, { perna:per }); }); bindTimeField('n-pou-'+idx, function(v){ var per=((state.voo.navegacao&&state.voo.navegacao.perna)||[]).slice(); per[idx]=Object.assign({},per[idx], { pouso:v }); state.voo.navegacao=Object.assign({},state.voo.navegacao||{}, { perna:per }); }); });
   // Checkout share
-  const area = document.querySelector('[data-ev="checkout-texto"]'); if (area) area.oninput = (e)=> state.checkoutTexto = e.target.value;
-  const shareC = document.querySelector('[data-ev="share-checkout"]'); if (shareC) shareC.onclick = ()=>{ const cab = [`Aluno: ${state.form.nomeAluno || '-'}`, `CANAC: ${state.form.canacAluno || '-'}`, `Data do voo: ${state.form.dataVoo || '-'}`].join('
-```
-
-'); const info = buildInfoVooReport(); const corpo = state.checkoutTexto || ""; const msg = `${cab}
-
-${info}
-
-${corpo}`.trim(); shareWhatsApp(msg); };
+  var area = document.querySelector('[data-ev="checkout-texto"]'); if (area) area.oninput = function(e){ state.checkoutTexto = e.target.value; };
+  var shareC = document.querySelector('[data-ev="share-checkout"]'); if (shareC) shareC.onclick = function(){ var cab = ['Aluno: '+(state.form.nomeAluno || '-'), 'CANAC: '+(state.form.canacAluno || '-'), 'Data do voo: '+(state.form.dataVoo || '-')].join('\n'); var info = buildInfoVooReport(); var corpo = state.checkoutTexto || ''; var msg = (cab+'\n\n'+info+'\n\n'+corpo).trim(); shareWhatsApp(msg); };
 }
 
-```
 // ==========================
 // Relógio Zulu e Init
 // ==========================
-function tick(){ state.clockZulu = dateToZuluHM(new Date()); const el = document.getElementById('clockZulu'); if (el) el.textContent = state.clockZulu + 'Z'; }
-document.getElementById("year").textContent = new Date().getFullYear();
+function tick(){ state.clockZulu = dateToZuluHM(new Date()); var el = document.getElementById('clockZulu'); if (el) el.textContent = state.clockZulu + 'Z'; }
+document.getElementById('year').textContent = new Date().getFullYear();
 setInterval(tick, 1000);
 render();
 

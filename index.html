@@ -1,4 +1,5 @@
 <!doctype html>
+
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
@@ -18,12 +19,15 @@
       <nav class="px-2 pb-2 grid grid-cols-4 gap-2" id="tabs"></nav>
     </header>
 
-    <!-- App -->
-    <main id="app" class="pb-6"></main>
+```
+<!-- App -->
+<main id="app" class="pb-6"></main>
 
-    <footer class="px-4 py-6 text-center text-xs text-gray-400">
-      © <span id="year"></span> — Protótipo para instrutores de voo
-    </footer>
+<footer class="px-4 py-6 text-center text-xs text-gray-400">
+  © <span id="year"></span> — Protótipo para instrutores de voo
+</footer>
+```
+
   </div>
 
   <script>
@@ -137,348 +141,399 @@
     }
     function TextArea(value, attrs=""){
       return `<textarea ${attrs} class="w-full border rounded-2xl p-3 bg-white resize-none">${value||""}</textarea>`;
-    }
-    function TimeField(id, label, value){
-      const [hh="00", mm="00"] = String(value||"00:00").split(":").map(x=>pad2(+x||0));
-      const HOURS = Array.from({length:24}, (_,i)=>pad2(i)).map(h=>`<option value="${h}" ${h===hh?'selected':''}>${h}</option>`).join("");
-      const MINUTES = Array.from({length:60}, (_,i)=>pad2(i)).map(m=>`<option value="${m}" ${m===mm?'selected':''}>${m}</option>`).join("");
-      const html = `
-        <div class="flex flex-col gap-1">
-          <label class="text-sm text-gray-700">${label}</label>
-          <div class="flex items-center gap-2">
-            <select data-id="${id}" data-part="hh" class="border rounded-xl p-3">${HOURS}</select>
-            <span class="text-gray-500">:</span>
-            <select data-id="${id}" data-part="mm" class="border rounded-xl p-3">${MINUTES}</select>
-            <button type="button" data-id="${id}" data-action="nowz" class="ml-2 px-3 py-2 rounded-xl border bg-white text-xs">Agora (Z)</button>
-          </div>
-          <input type="hidden" id="${id}" value="${hh}:${mm}" />
-        </div>`;
-      return html;
-    }
-    function bindTimeField(id, onChange){
-      const hh = document.querySelector(`select[data-id="${id}"][data-part="hh"]`);
-      const mm = document.querySelector(`select[data-id="${id}"][data-part="mm"]`);
-      const hidden = document.getElementById(id);
-      const btn = document.querySelector(`button[data-id="${id}"][data-action="nowz"]`);
-      function update(){ hidden.value = `${hh.value}:${mm.value}`; hidden.dispatchEvent(new Event("change")); }
-      if (hh) hh.onchange = update;
-      if (mm) mm.onchange = update;
-      if (hidden) hidden.addEventListener("change", ()=> onChange(hidden.value));
-      if (btn) btn.onclick = ()=>{ const n=new Date(); hh.value=pad2(n.getUTCHours()); mm.value=pad2(n.getUTCMinutes()); update(); };
-    }
 
-    function semicolonSplitToItems(raw){
-      const arr = Array.isArray(raw) ? raw : [String(raw||"")];
-      return arr.flatMap(s=> String(s).split(";")).map(x=>x.trim()).filter(Boolean);
-    }
-    function formatMissoesForText(dataset, codes){
-      const blocks = [];
-      (codes||[]).forEach(code=>{
-        const d = dataset?.[code];
-        blocks.push(`Missão ${code}`);
-        const itens = d ? semicolonSplitToItems(d.conteudo) : [];
-        itens.forEach((item, idx)=> blocks.push(`- ${item}${idx < itens.length-1 ? ';' : ''}`));
-        if (!itens.length) blocks.push('- (sem itens)');
-        blocks.push('');
-      });
-      return blocks.join('\n');
-    }
-    function datasetByFase(fase){
-      if (fase==="PC") return MISSOES.PC;
-      if (fase==="INVA") return MISSOES.INVA;
-      if (fase==="PP" || fase==="PPR") return MISSOES.PP;
-      return {};
-    }
+```
+}
+function TimeField(id, label, value){
+  const [hh="00", mm="00"] = String(value||"00:00").split(":").map(x=>pad2(+x||0));
+  const HOURS = Array.from({length:24}, (_,i)=>pad2(i)).map(h=>`<option value="${h}" ${h===hh?'selected':''}>${h}</option>`).join("");
+  const MINUTES = Array.from({length:60}, (_,i)=>pad2(i)).map(m=>`<option value="${m}" ${m===mm?'selected':''}>${m}</option>`).join("");
+  const html = `
+    <div class="flex flex-col gap-1">
+      <label class="text-sm text-gray-700">${label}</label>
+      <div class="flex items-center gap-2">
+        <select data-id="${id}" data-part="hh" class="border rounded-xl p-3">${HOURS}</select>
+        <span class="text-gray-500">:</span>
+        <select data-id="${id}" data-part="mm" class="border rounded-xl p-3">${MINUTES}</select>
+        <button type="button" data-id="${id}" data-action="nowz" class="ml-2 px-3 py-2 rounded-xl border bg-white text-xs">Agora (Z)</button>
+      </div>
+      <input type="hidden" id="${id}" value="${hh}:${mm}" />
+    </div>`;
+  return html;
+}
+function bindTimeField(id, onChange){
+  const hh = document.querySelector(`select[data-id="${id}"][data-part="hh"]`);
+  const mm = document.querySelector(`select[data-id="${id}"][data-part="mm"]`);
+  const hidden = document.getElementById(id);
+  const btn = document.querySelector(`button[data-id="${id}"][data-action="nowz"]`);
+  function update(){ hidden.value = `${hh.value}:${mm.value}`; hidden.dispatchEvent(new Event("change")); }
+  if (hh) hh.onchange = update;
+  if (mm) mm.onchange = update;
+  if (hidden) hidden.addEventListener("change", ()=> { onChange(hidden.value); render(); }); // <<< re-render ao alterar hora
+  if (btn) btn.onclick = ()=>{ const n=new Date(); hh.value=pad2(n.getUTCHours()); mm.value=pad2(n.getUTCMinutes()); update(); };
+}
 
-    // ==========================
-    // Páginas
-    // ==========================
-    function PageInicial(){
-      const todayISO = new Date().toISOString().slice(0,10);
-      if (!state.form.dataVoo) state.form.dataVoo = todayISO;
+function semicolonSplitToItems(raw){
+  const arr = Array.isArray(raw) ? raw : [String(raw||"")];
+  return arr.flatMap(s=> String(s).split(";")).map(x=>x.trim()).filter(Boolean);
+}
+function formatMissoesForText(dataset, codes){
+  const blocks = [];
+  (codes||[]).forEach(code=>{
+    const d = dataset?.[code];
+    blocks.push(`Missão ${code}`);
+    const itens = d ? semicolonSplitToItems(d.conteudo) : [];
+    itens.forEach((item, idx)=> blocks.push(`- ${item}${idx < itens.length-1 ? ';' : ''}`));
+    if (!itens.length) blocks.push('- (sem itens)');
+    blocks.push('');
+  });
+  return blocks.join('
+```
 
-      const missoes = (state.form.missoes||[]).map((m,idx)=>`
-        <div class="p-3 rounded-2xl border shadow-sm bg-white flex items-center gap-3">
-          ${Select(["",...MISSOES_POR_FASE[state.form.fase||"PP"]], m, `data-ev="missao" data-idx="${idx}"`)}
-          <button class="ml-auto text-sm text-red-600" data-ev="remove-missao" data-idx="${idx}">Remover</button>
-        </div>`).join("");
+');
+}
+function datasetByFase(fase){
+if (fase==="PC") return MISSOES.PC;
+if (fase==="INVA") return MISSOES.INVA;
+if (fase==="PP" || fase==="PPR") return MISSOES.PP;
+return {};
+}
 
-      return `
-        <div class="p-4 flex flex-col gap-4">
-          <div class="grid grid-cols-1 gap-4">
-            ${Field("Nome do Aluno", Input(state.form.nomeAluno, `data-ev="nomeAluno" placeholder="Digite o nome"`))}
-            ${Field("CANAC do Aluno", Input(state.form.canacAluno, `data-ev="canacAluno" placeholder="Ex.: 123456"`))}
-            ${Field("Data do Voo", `<input type="date" class="w-full border rounded-xl p-3" value="${state.form.dataVoo||todayISO}" data-ev="dataVoo" />`)}
-            ${Field("Fase da Instrução", Select(FASES, state.form.fase||"PP", `data-ev="fase"`))}
-          </div>
+```
+// ==========================
+// Páginas
+// ==========================
+function PageInicial(){
+  const todayISO = new Date().toISOString().slice(0,10);
+  if (!state.form.dataVoo) state.form.dataVoo = todayISO;
 
-          <div class="mt-2">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-sm text-gray-700">Missões</span>
-              <button class="px-3 py-1 rounded-xl bg-black text-white" data-ev="add-missao">+ Adicionar</button>
-            </div>
-            <div class="flex flex-col gap-3">${missoes}</div>
-          </div>
-        </div>`;
-    }
+  const missoes = (state.form.missoes||[]).map((m,idx)=>`
+    <div class="p-3 rounded-2xl border shadow-sm bg-white flex items-center gap-3">
+      ${Select(["",...MISSOES_POR_FASE[state.form.fase||"PP"]], m, `data-ev="missao" data-idx="${idx}"`)}
+      <button class="ml-auto text-sm text-red-600" data-ev="remove-missao" data-idx="${idx}">Remover</button>
+    </div>`).join("");
 
-    function pageInfoResultados(){
-      if ((state.voo.tipoVoo||"Local")==="Local"){
-        const minsTotal = diffHMtoMinutes(state.voo.local?.acionamento||"00:00", state.voo.local?.corte||"00:00");
-        const minsVoo   = diffHMtoMinutes(state.voo.local?.decolagem  ||"00:00", state.voo.local?.pouso  ||"00:00");
-        return { totalHHMM: minutesToHHMM(minsTotal), totalDecimal: minutesToDecimalTenthsStr(minsTotal), vooHHMM: minutesToHHMM(minsVoo), vooDecimal: minutesToDecimalTenthsStr(minsVoo), pernas:[] };
-      } else {
-        const acion = state.voo.navegacao?.acionamento || "00:00";
-        const corte = state.voo.navegacao?.corte || "00:00";
-        const minsTotal = diffHMtoMinutes(acion, corte);
-        const pernas = (state.voo.navegacao?.perna||[]).map(p=>{
-          const mm = diffHMtoMinutes(p.decolagem||"00:00", p.pouso||"00:00");
-          return { ...p, hhmm: minutesToHHMM(mm), dec: minutesToDecimalTenthsStr(mm) };
-        });
-        return { totalHHMM: minutesToHHMM(minsTotal), totalDecimal: minutesToDecimalTenthsStr(minsTotal), vooHHMM:null, vooDecimal:null, pernas };
-      }
-    }
+  return `
+    <div class="p-4 flex flex-col gap-4">
+      <div class="grid grid-cols-1 gap-4">
+        ${Field("Nome do Aluno", Input(state.form.nomeAluno, `data-ev="nomeAluno" placeholder="Digite o nome"`))}
+        ${Field("CANAC do Aluno", Input(state.form.canacAluno, `data-ev="canacAluno" placeholder="Ex.: 123456"`))}
+        ${Field("Data do Voo", `<input type="date" class="w-full border rounded-xl p-3" value="${state.form.dataVoo||todayISO}" data-ev="dataVoo" />`)}
+        ${Field("Fase da Instrução", Select(FASES, state.form.fase||"PP", `data-ev="fase"`))}
+      </div>
 
-    function PageInfoVoo(){
-      const nowHM = dateToZuluHM(new Date());
-      if (!state.voo.local?.acionamento && state.voo.tipoVoo!=="Navegação"){
-        const acion = nowHM, deco = addMinutesZulu(acion,10), pouso = addMinutesZulu(acion,55), corte = addMinutesZulu(acion,60);
-        state.voo = {
-          aeronave: state.voo.aeronave||"",
-          tipoVoo: state.voo.tipoVoo||"Local",
-          local: { acionamento: acion, decolagem: deco, pouso, corte },
-          navegacao: state.voo.navegacao || { acionamento: acion, perna: [{ decolagem: deco, pouso: addMinutesZulu(deco,30)}], corte }
-        };
-      }
-
-      const tipoLocal = `
-        ${TimeField("l-acion","Acionamento (Zulu)", state.voo.local?.acionamento||"")}
-        ${TimeField("l-decol","Decolagem (Zulu)", state.voo.local?.decolagem||"")}
-        ${TimeField("l-pouso","Pouso (Zulu)", state.voo.local?.pouso||"")}
-        ${TimeField("l-corte","Corte (Zulu)", state.voo.local?.corte||"")}
-      `;
-      const pernas = (state.voo.navegacao?.perna||[]).map((p,idx)=>`
-        <div class="p-3 rounded-2xl border bg-white shadow-sm">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-sm font-medium">Perna ${idx+1}</span>
-            <button class="text-xs text-red-600" data-ev="remove-perna" data-idx="${idx}">Remover</button>
-          </div>
-          <div class="grid grid-cols-1 gap-3">
-            ${TimeField(`n-dec-${idx}`,"Decolagem (Zulu)", p.decolagem)}
-            ${TimeField(`n-pou-${idx}`,"Pouso (Zulu)", p.pouso)}
-          </div>
+      <div class="mt-2">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm text-gray-700">Missões</span>
+          <button class="px-3 py-1 rounded-xl bg-black text-white" data-ev="add-missao">+ Adicionar</button>
         </div>
-      `).join("");
-      const tipoNav = `
-        ${TimeField("n-acion","Acionamento (Zulu)", state.voo.navegacao?.acionamento||"")}
-        ${pernas}
-        <button class="w-full rounded-2xl bg-black text-white py-2" data-ev="add-perna">+ Adicionar Decolagem/Pouso</button>
-        ${TimeField("n-corte","Corte (Zulu)", state.voo.navegacao?.corte||"")}
-      `;
+        <div class="flex flex-col gap-3">${missoes}</div>
+      </div>
+    </div>`;
+}
 
-      const r = pageInfoResultados();
+function pageInfoResultados(){
+  if ((state.voo.tipoVoo||"Local")==="Local"){
+    const minsTotal = diffHMtoMinutes(state.voo.local?.acionamento||"00:00", state.voo.local?.corte||"00:00");
+    const minsVoo   = diffHMtoMinutes(state.voo.local?.decolagem  ||"00:00", state.voo.local?.pouso  ||"00:00");
+    return { totalHHMM: minutesToHHMM(minsTotal), totalDecimal: minutesToDecimalTenthsStr(minsTotal), vooHHMM: minutesToHHMM(minsVoo), vooDecimal: minutesToDecimalTenthsStr(minsVoo), pernas:[] };
+  } else {
+    const acion = state.voo.navegacao?.acionamento || "00:00";
+    const corte = state.voo.navegacao?.corte || "00:00";
+    const minsTotal = diffHMtoMinutes(acion, corte);
+    const pernas = (state.voo.navegacao?.perna||[]).map(p=>{
+      const mm = diffHMtoMinutes(p.decolagem||"00:00", p.pouso||"00:00");
+      return { ...p, hhmm: minutesToHHMM(mm), dec: minutesToDecimalTenthsStr(mm) };
+    });
+    return { totalHHMM: minutesToHHMM(minsTotal), totalDecimal: minutesToDecimalTenthsStr(minsTotal), vooHHMM:null, vooDecimal:null, pernas };
+  }
+}
 
-      return `
-        <div class="p-4 flex flex-col gap-4">
-          <div class="grid grid-cols-1 gap-4">
-            ${Field("Aeronave", Select(["",...AERONAVES], state.voo.aeronave||"", `data-ev="aeronave"`))}
-            ${Field("Tipo de Voo", Select(TIPOS_VOO, state.voo.tipoVoo||"Local", `data-ev="tipoVoo"`))}
+function PageInfoVoo(){
+  const nowHM = dateToZuluHM(new Date());
+  if (!state.voo.local?.acionamento && state.voo.tipoVoo!=="Navegação"){
+    const acion = nowHM, deco = addMinutesZulu(acion,10), pouso = addMinutesZulu(acion,55), corte = addMinutesZulu(acion,60);
+    state.voo = {
+      aeronave: state.voo.aeronave||"",
+      tipoVoo: state.voo.tipoVoo||"Local",
+      local: { acionamento: acion, decolagem: deco, pouso, corte },
+      navegacao: state.voo.navegacao || { acionamento: acion, perna: [{ decolagem: deco, pouso: addMinutesZulu(deco,30)}], corte }
+    };
+  }
+
+  const tipoLocal = `
+    ${TimeField("l-acion","Acionamento (Zulu)", state.voo.local?.acionamento||"")}
+    ${TimeField("l-decol","Decolagem (Zulu)", state.voo.local?.decolagem||"")}
+    ${TimeField("l-pouso","Pouso (Zulu)", state.voo.local?.pouso||"")}
+    ${TimeField("l-corte","Corte (Zulu)", state.voo.local?.corte||"")}
+  `;
+  const pernas = (state.voo.navegacao?.perna||[]).map((p,idx)=>`
+    <div class="p-3 rounded-2xl border bg-white shadow-sm">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-medium">Perna ${idx+1}</span>
+        <button class="text-xs text-red-600" data-ev="remove-perna" data-idx="${idx}">Remover</button>
+      </div>
+      <div class="grid grid-cols-1 gap-3">
+        ${TimeField(`n-dec-${idx}`,"Decolagem (Zulu)", p.decolagem)}
+        ${TimeField(`n-pou-${idx}`,"Pouso (Zulu)", p.pouso)}
+      </div>
+    </div>
+  `).join("");
+  const tipoNav = `
+    ${TimeField("n-acion","Acionamento (Zulu)", state.voo.navegacao?.acionamento||"")}
+    ${pernas}
+    <button class="w-full rounded-2xl bg-black text-white py-2" data-ev="add-perna">+ Adicionar Decolagem/Pouso</button>
+    ${TimeField("n-corte","Corte (Zulu)", state.voo.navegacao?.corte||"")}
+  `;
+
+  const r = pageInfoResultados();
+
+  return `
+    <div class="p-4 flex flex-col gap-4">
+      <div class="grid grid-cols-1 gap-4">
+        ${Field("Aeronave", Select(["",...AERONAVES], state.voo.aeronave||"", `data-ev="aeronave"`))}
+        ${Field("Tipo de Voo", Select(TIPOS_VOO, state.voo.tipoVoo||"Local", `data-ev="tipoVoo"`))}
+      </div>
+
+      ${(state.voo.tipoVoo||"Local")==="Local" ? `<div class="grid grid-cols-1 gap-3">${tipoLocal}</div>` : `<div class="grid grid-cols-1 gap-3">${tipoNav}</div>`}
+
+      <div class="mt-2 p-3 rounded-2xl bg-gray-50 border">
+        <div class="text-sm text-gray-600 mb-1">Somatórios</div>
+        <div class="text-sm">Total (Acionamento → Corte): <b>${r.totalHHMM}</b> – <b>${r.totalDecimal} h</b></div>
+        ${(state.voo.tipoVoo||"Local")==="Local"
+          ? `<div class="text-sm">Decolagem → Pouso: <b>${r.vooHHMM}</b> – <b>${r.vooDecimal} h</b></div>`
+          : `<div class="text-sm flex flex-col gap-1">
+              ${r.pernas.map((p,i)=>`<div>Perna ${i+1} (Dec→Pou): <b>${p.hhmm}</b> – <b>${p.dec} h</b></div>`).join("")}
+            </div>`
+        }
+      </div>
+
+      <div class="sticky bottom-3 p-4 rounded-2xl bg-black text-white text-center text-xl tracking-wider">
+        Horário Zulu: <b id="clockZulu">${state.clockZulu}Z</b>
+      </div>
+    </div>`;
+}
+
+function PageFichaTecnica(){
+  const ds = datasetByFase(state.form.fase);
+  const cods = (state.form.missoes||[]).filter(Boolean);
+  const infos = cods.map(code=>({ code, data: ds?.[code] }));
+
+  const itens = infos.map(m=>`
+    <div class="p-4 rounded-2xl border bg-white shadow-sm">
+      <div class="text-lg font-semibold mb-2">Missão: ${m.code}</div>
+      ${!m.data ? `<div class="text-sm text-red-600">Não encontrado na base de dados embutida.</div>` : `
+        <div class="flex flex-col gap-2 text-sm">
+          <div><b>Tempo de Voo:</b> ${m.data.tempo_voo||"-"}</div>
+          <div><b>Pousos:</b> ${m.data.pousos ?? "-"}</div>
+          <div><b>Pré-requisitos:</b> ${(m.data.pre_requisitos||[]).join(", ") || "-"}</div>
+          <div><b>Registro:</b> ${m.data.registro || "-"}</div>
+          <div><b>Competências:</b> ${(m.data.competencias||[]).join(", ") || "-"}</div>
+          <div>
+            <b>Conteúdo / Manobras:</b>
+            <div class="mt-1">Missão ${m.code}</div>
+            <ul class="ml-5">
+              ${semicolonSplitToItems(m.data.conteudo).map((c,i,arr)=>`<li>- ${c}${i<arr.length-1?';':''}</li>`).join("")}
+            </ul>
           </div>
+        </div>`}
+    </div>
+  `).join("");
 
-          ${(state.voo.tipoVoo||"Local")==="Local" ? `<div class="grid grid-cols-1 gap-3">${tipoLocal}</div>` : `<div class="grid grid-cols-1 gap-3">${tipoNav}</div>`}
+  return `
+    <div class="p-4 flex flex-col gap-4">
+      <!-- compartilhamento removido desta página -->
+      ${infos.length===0 ? `<div class="text-sm text-gray-500">Selecione ao menos uma missão na página inicial.</div>` : ""}
+      ${itens}
+    </div>`;
+}
 
-          <div class="mt-2 p-3 rounded-2xl bg-gray-50 border">
-            <div class="text-sm text-gray-600 mb-1">Somatórios</div>
-            <div class="text-sm">Total (Acionamento → Corte): <b>${r.totalHHMM}</b> – <b>${r.totalDecimal} h</b></div>
-            ${(state.voo.tipoVoo||"Local")==="Local"
-              ? `<div class="text-sm">Decolagem → Pouso: <b>${r.vooHHMM}</b> – <b>${r.vooDecimal} h</b></div>`
-              : `<div class="text-sm flex flex-col gap-1">
-                  ${r.pernas.map((p,i)=>`<div>Perna ${i+1} (Dec→Pou): <b>${p.hhmm}</b> – <b>${p.dec} h</b></div>`).join("")}
-                </div>`
-            }
-          </div>
+function buildInfoVooReport(){
+  const r = pageInfoResultados();
+  const tipo = state.voo.tipoVoo || "Local";
+  let linhas = [];
+  if (tipo === "Local"){
+    linhas.push("Informações do voo (Local)");
+    linhas.push(`Aeronave: ${state.voo.aeronave || '-'}`);
+    linhas.push(`Acionamento: ${state.voo.local?.acionamento || '-'}`);
+    linhas.push(`Decolagem: ${state.voo.local?.decolagem || '-'}`);
+    linhas.push(`Pouso: ${state.voo.local?.pouso || '-'}`);
+    linhas.push(`Corte: ${state.voo.local?.corte || '-'}`);
+    linhas.push(`Total (Acion→Corte): ${r.totalHHMM} — ${r.totalDecimal} h`);
+    linhas.push(`Decol→Pouso: ${r.vooHHMM} — ${r.vooDecimal} h`);
+  } else {
+    linhas.push("Informações do voo (Navegação)");
+    linhas.push(`Aeronave: ${state.voo.aeronave || '-'}`);
+    linhas.push(`Acionamento: ${state.voo.navegacao?.acionamento || '-'}`);
+    (r.pernas||[]).forEach((p,i)=>{
+      linhas.push(`Perna ${i+1} — Decolagem: ${p.decolagem} | Pouso: ${p.pouso} | Duração: ${p.hhmm} — ${p.dec} h`);
+    });
+    linhas.push(`Corte: ${state.voo.navegacao?.corte || '-'}`);
+    linhas.push(`Total (Acion→Corte): ${r.totalHHMM} — ${r.totalDecimal} h`);
+  }
+  return linhas.join('
+```
 
-          <div class="sticky bottom-3 p-4 rounded-2xl bg-black text-white text-center text-xl tracking-wider">
-            Horário Zulu: <b id="clockZulu">${state.clockZulu}Z</b>
-          </div>
-        </div>`;
-    }
+');
+}
 
-    function PageFichaTecnica(){
-      const ds = datasetByFase(state.form.fase);
-      const cods = (state.form.missoes||[]).filter(Boolean);
-      const infos = cods.map(code=>({ code, data: ds?.[code] }));
-
-      const itens = infos.map(m=>`
-        <div class="p-4 rounded-2xl border bg-white shadow-sm">
-          <div class="text-lg font-semibold mb-2">Missão: ${m.code}</div>
-          ${!m.data ? `<div class="text-sm text-red-600">Não encontrado na base de dados embutida.</div>` : `
-            <div class="flex flex-col gap-2 text-sm">
-              <div><b>Tempo de Voo:</b> ${m.data.tempo_voo||"-"}</div>
-              <div><b>Pousos:</b> ${m.data.pousos ?? "-"}</div>
-              <div><b>Pré-requisitos:</b> ${(m.data.pre_requisitos||[]).join(", ") || "-"}</div>
-              <div><b>Registro:</b> ${m.data.registro || "-"}</div>
-              <div><b>Competências:</b> ${(m.data.competencias||[]).join(", ") || "-"}</div>
-              <div>
-                <b>Conteúdo / Manobras:</b>
-                <div class="mt-1">Missão ${m.code}</div>
-                <ul class="ml-5">
-                  ${semicolonSplitToItems(m.data.conteudo).map((c,i,arr)=>`<li>- ${c}${i<arr.length-1?';':''}</li>`).join("")}
-                </ul>
-              </div>
-            </div>`}
-        </div>
-      `).join("");
-
-      return `
-        <div class="p-4 flex flex-col gap-4">
-          <!-- compartilhamento removido desta página -->
-          ${infos.length===0 ? `<div class="text-sm text-gray-500">Selecione ao menos uma missão na página inicial.</div>` : ""}
-          ${itens}
-        </div>`;
-    }
-
-    function PageCheckout(){
-      const ds = datasetByFase(state.form.fase);
-      const cods = (state.form.missoes||[]).filter(Boolean);
-      if (!state._checkoutInit){
-        const linhas=[];
-        cods.forEach(code=>{
-          const d = ds?.[code];
-          linhas.push(`Missão ${code}`);
-          if (d && d.conteudo){
-            const itens = semicolonSplitToItems(d.conteudo);
-            itens.forEach((it,idx)=> linhas.push(`- ${it}${idx<itens.length-1?';':''}`));
-          }
-          linhas.push("");
-        });
-        state.checkoutTexto = linhas.join("\n");
-        state._checkoutInit = true;
+```
+function PageCheckout(){
+  const ds = datasetByFase(state.form.fase);
+  const cods = (state.form.missoes||[]).filter(Boolean);
+  if (!state._checkoutInit){
+    const linhas=[];
+    cods.forEach(code=>{
+      const d = ds?.[code];
+      linhas.push(`Missão ${code}`);
+      if (d && d.conteudo){
+        const itens = semicolonSplitToItems(d.conteudo);
+        itens.forEach((it,idx)=> linhas.push(`- ${it}${idx<itens.length-1?';':''}`));
       }
+      linhas.push("");
+    });
+    state.checkoutTexto = linhas.join("
+```
 
-      // Altura do textarea até o rodapé (sem rolagem extra)
-      const headerH = 56 + 48; // aprox header + tabs
-      const footerH = 56;      // aprox footer
-      const padding = 24 + 48; // paddings/margens
-      const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
-      const taHeight = Math.max(200, vh - headerH - footerH - padding);
+");
+state._checkoutInit = true;
+}
 
-      return `
-        <div class="p-4 flex flex-col gap-3">
-          <div class="text-sm text-gray-600">Escreva aqui sua avaliação (livre). O texto vem pré-preenchido com o descritivo da(s) missão(ões), podendo ser editado.</div>
-          <div class="flex gap-2 mb-2">
-            <button class="px-3 py-2 rounded-xl bg-black text-white text-xs" data-ev="share-checkout">Compartilhar WhatsApp</button>
-          </div>
-          ${TextArea(state.checkoutTexto, `data-ev="checkout-texto" style="height:${taHeight}px"`)}
-        </div>`;
-    }
+```
+  // Altura do textarea até o rodapé (sem rolagem extra)
+  const headerH = 56 + 48; // aprox header + tabs
+  const footerH = 56;      // aprox footer
+  const padding = 24 + 48; // paddings/margens
+  const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+  const taHeight = Math.max(200, vh - headerH - footerH - padding);
 
-    // ==========================
-    // Render raiz + bindings
-    // ==========================
-    function render(){
-      // tabs
-      const tabs = ["Inicial","Informações do voo","Ficha Técnica","Check-out"];
-      document.getElementById("tabs").innerHTML = tabs.map(t=>`
-        <button data-aba="${t}" class="py-2 rounded-2xl text-sm ${state.aba===t?'bg-black text-white':'bg-gray-200 text-gray-800'}">${t}</button>
-      `).join("");
+  return `
+    <div class="p-4 flex flex-col gap-3">
+      <div class="text-sm text-gray-600">Escreva aqui sua avaliação (livre). O texto vem pré-preenchido com o descritivo da(s) missão(ões), podendo ser editado.</div>
+      <div class="flex gap-2 mb-2">
+        <button class="px-3 py-2 rounded-xl bg-black text-white text-xs" data-ev="share-checkout">Compartilhar WhatsApp</button>
+      </div>
+      ${TextArea(state.checkoutTexto, `data-ev="checkout-texto" style="height:${taHeight}px"`)}
+    </div>`;
+}
 
-      // page
-      const app = document.getElementById("app");
-      app.innerHTML =
-        state.aba==="Inicial" ? PageInicial()
-      : state.aba==="Informações do voo" ? PageInfoVoo()
-      : state.aba==="Ficha Técnica" ? PageFichaTecnica()
-      : PageCheckout();
+// ==========================
+// Render raiz + bindings
+// ==========================
+function render(){
+  // tabs
+  const tabs = ["Inicial","Informações do voo","Ficha Técnica","Check-out"];
+  document.getElementById("tabs").innerHTML = tabs.map(t=>`
+    <button data-aba="${t}" class="py-2 rounded-2xl text-sm ${state.aba===t?'bg-black text-white':'bg-gray-200 text-gray-800'}">${t}</button>
+  `).join("");
 
-      bind();
-    }
+  // page
+  const app = document.getElementById("app");
+  app.innerHTML =
+    state.aba==="Inicial" ? PageInicial()
+  : state.aba==="Informações do voo" ? PageInfoVoo()
+  : state.aba==="Ficha Técnica" ? PageFichaTecnica()
+  : PageCheckout();
 
-    function bind(){
-      // tabs
-      document.querySelectorAll('[data-aba]').forEach(b=>{
-        b.onclick = ()=> { state.aba = b.getAttribute('data-aba'); if (state.aba!=="Check-out") state._checkoutInit = false; render(); };
-      });
+  bind();
+}
 
-      // Inicial
-      const set = (k)=> (e)=> state.form[k] = e.target.value;
-      document.querySelectorAll('[data-ev="nomeAluno"]').forEach(el=> el.oninput = set('nomeAluno'));
-      document.querySelectorAll('[data-ev="canacAluno"]').forEach(el=> el.oninput = set('canacAluno'));
-      document.querySelectorAll('[data-ev="dataVoo"]').forEach(el=> el.oninput = set('dataVoo'));
-      const fase = document.querySelector('[data-ev="fase"]'); if (fase) fase.onchange = (e)=>{ state.form.fase = e.target.value; state.form.missoes=[""]; render(); };
-      document.querySelectorAll('[data-ev="missao"]').forEach(el=> el.onchange = (e)=>{ const idx=+el.getAttribute('data-idx'); state.form.missoes[idx]=e.target.value; });
-      const addM = document.querySelector('[data-ev="add-missao"]'); if (addM) addM.onclick = ()=> { state.form.missoes.push(""); render(); };
-      document.querySelectorAll('[data-ev="remove-missao"]').forEach(el=> el.onclick = ()=>{ const idx=+el.getAttribute('data-idx'); state.form.missoes = state.form.missoes.filter((_,i)=>i!==idx); render(); });
+function bind(){
+  // tabs
+  document.querySelectorAll('[data-aba]').forEach(b=>{
+    b.onclick = ()=> { state.aba = b.getAttribute('data-aba'); if (state.aba!=="Check-out") state._checkoutInit = false; render(); };
+  });
 
-      // Info voo
-      const aer = document.querySelector('[data-ev="aeronave"]'); if (aer) aer.onchange = (e)=> state.voo.aeronave = e.target.value;
-      const tipo = document.querySelector('[data-ev="tipoVoo"]'); if (tipo) tipo.onchange = (e)=> { state.voo.tipoVoo = e.target.value; render(); };
-      // TimeFields
-      bindTimeField("l-acion", v=> state.voo.local={...(state.voo.local||{}), acionamento:v});
-      bindTimeField("l-decol", v=> state.voo.local={...(state.voo.local||{}), decolagem:v});
-      bindTimeField("l-pouso", v=> state.voo.local={...(state.voo.local||{}), pouso:v});
-      bindTimeField("l-corte", v=> state.voo.local={...(state.voo.local||{}), corte:v});
-      bindTimeField("n-acion", v=> state.voo.navegacao={...(state.voo.navegacao||{}), acionamento:v});
-      bindTimeField("n-corte", v=> state.voo.navegacao={...(state.voo.navegacao||{}), corte:v});
-      // pernas
-      const addP = document.querySelector('[data-ev="add-perna"]'); if (addP) addP.onclick = ()=>{
-        const per = state.voo.navegacao?.perna || [];
-        const last = per[per.length-1] || { decolagem: state.voo.navegacao?.acionamento || "00:00", pouso: addMinutesZulu(state.voo.navegacao?.acionamento || "00:00", 30) };
-        const nextDec = addMinutesZulu(last.pouso, 30);
-        const nextPou = addMinutesZulu(nextDec, 30);
-        state.voo.navegacao = { ...(state.voo.navegacao||{}), perna: [...per, { decolagem: nextDec, pouso: nextPou }] };
-        render();
-      };
-      document.querySelectorAll('[data-ev="remove-perna"]').forEach(el=> el.onclick = ()=>{
-        const idx = +el.getAttribute('data-idx');
-        const per = [...(state.voo.navegacao?.perna||[])];
-        per.splice(idx,1);
-        state.voo.navegacao = { ...(state.voo.navegacao||{}), perna: per };
-        render();
-      });
-      (state.voo.navegacao?.perna||[]).forEach((p,idx)=>{
-        bindTimeField(`n-dec-${idx}`, v=>{ const per=[...(state.voo.navegacao?.perna||[])]; per[idx]={...per[idx], decolagem:v}; state.voo.navegacao={...(state.voo.navegacao||{}), perna:per}; });
-        bindTimeField(`n-pou-${idx}`, v=>{ const per=[...(state.voo.navegacao?.perna||[])]; per[idx]={...per[idx], pouso:v}; state.voo.navegacao={...(state.voo.navegacao||{}), perna:per}; });
-      });
+  // Inicial
+  const set = (k)=> (e)=> state.form[k] = e.target.value;
+  document.querySelectorAll('[data-ev="nomeAluno"]').forEach(el=> el.oninput = set('nomeAluno'));
+  document.querySelectorAll('[data-ev="canacAluno"]').forEach(el=> el.oninput = set('canacAluno'));
+  document.querySelectorAll('[data-ev="dataVoo"]').forEach(el=> el.oninput = set('dataVoo'));
+  const fase = document.querySelector('[data-ev="fase"]'); if (fase) fase.onchange = (e)=>{ state.form.fase = e.target.value; state.form.missoes=[""]; render(); };
+  document.querySelectorAll('[data-ev="missao"]').forEach(el=> el.onchange = (e)=>{ const idx=+el.getAttribute('data-idx'); state.form.missoes[idx]=e.target.value; });
+  const addM = document.querySelector('[data-ev="add-missao"]'); if (addM) addM.onclick = ()=> { state.form.missoes.push(""); render(); };
+  document.querySelectorAll('[data-ev="remove-missao"]').forEach(el=> el.onclick = ()=>{ const idx=+el.getAttribute('data-idx'); state.form.missoes = state.form.missoes.filter((_,i)=>i!==idx); render(); });
 
-      // Checkout
-      const area = document.querySelector('[data-ev="checkout-texto"]');
-      if (area) area.oninput = (e)=> state.checkoutTexto = e.target.value;
-      const shareC = document.querySelector('[data-ev="share-checkout"]');
-      if (shareC) shareC.onclick = ()=>{
-        const cabecalho = [
-          `Aluno: ${state.form.nomeAluno || '-'}`,
-          `CANAC: ${state.form.canacAluno || '-'}`,
-          `Data do voo: ${state.form.dataVoo || '-'}`
-        ].join('\n');
-        const corpo = state.checkoutTexto || "";
-        const msg = `${cabecalho}\n\n${corpo}`.trim();
-        shareWhatsApp(msg);
-      };
-    }
-
-    // ==========================
-    // Relógio Zulu
-    // ==========================
-    function tick(){
-      state.clockZulu = dateToZuluHM(new Date());
-      const el = document.getElementById("clockZulu");
-      if (el) el.textContent = state.clockZulu + "Z";
-    }
-
-    // ==========================
-    // Init
-    // ==========================
-    document.getElementById("year").textContent = new Date().getFullYear();
-    setInterval(tick, 1000);
+  // Info voo
+  const aer = document.querySelector('[data-ev="aeronave"]'); if (aer) aer.onchange = (e)=> { state.voo.aeronave = e.target.value; /* não precisa re-render */ };
+  const tipo = document.querySelector('[data-ev="tipoVoo"]'); if (tipo) tipo.onchange = (e)=> { state.voo.tipoVoo = e.target.value; render(); };
+  // TimeFields (re-render ao alterar)
+  bindTimeField("l-acion", v=> state.voo.local={...(state.voo.local||{}), acionamento:v});
+  bindTimeField("l-decol", v=> state.voo.local={...(state.voo.local||{}), decolagem:v});
+  bindTimeField("l-pouso", v=> state.voo.local={...(state.voo.local||{}), pouso:v});
+  bindTimeField("l-corte", v=> state.voo.local={...(state.voo.local||{}), corte:v});
+  bindTimeField("n-acion", v=> state.voo.navegacao={...(state.voo.navegacao||{}), acionamento:v});
+  bindTimeField("n-corte", v=> state.voo.navegacao={...(state.voo.navegacao||{}), corte:v});
+  // pernas
+  const addP = document.querySelector('[data-ev="add-perna"]'); if (addP) addP.onclick = ()=>{
+    const per = state.voo.navegacao?.perna || [];
+    const last = per[per.length-1] || { decolagem: state.voo.navegacao?.acionamento || "00:00", pouso: addMinutesZulu(state.voo.navegacao?.acionamento || "00:00", 30) };
+    const nextDec = addMinutesZulu(last.pouso, 30);
+    const nextPou = addMinutesZulu(nextDec, 30);
+    state.voo.navegacao = { ...(state.voo.navegacao||{}), perna: [...per, { decolagem: nextDec, pouso: nextPou }] };
     render();
+  };
+  document.querySelectorAll('[data-ev="remove-perna"]').forEach(el=> el.onclick = ()=>{
+    const idx = +el.getAttribute('data-idx');
+    const per = [...(state.voo.navegacao?.perna||[])];
+    per.splice(idx,1);
+    state.voo.navegacao = { ...(state.voo.navegacao||{}), perna: per };
+    render();
+  });
+  (state.voo.navegacao?.perna||[]).forEach((p,idx)=>{
+    bindTimeField(`n-dec-${idx}`, v=>{ const per=[...(state.voo.navegacao?.perna||[])]; per[idx]={...per[idx], decolagem:v}; state.voo.navegacao={...(state.voo.navegacao||{}), perna:per}; });
+    bindTimeField(`n-pou-${idx}`, v=>{ const per=[...(state.voo.navegacao?.perna||[])]; per[idx]={...per[idx], pouso:v}; state.voo.navegacao={...(state.voo.navegacao||{}), perna:per}; });
+  });
 
-    // Testes rápidos (console)
-    console.assert(diffHMtoMinutes('10:00','11:30')===90, '10:00-11:30=90');
-    console.assert(minutesToHHMM(110)==='01:50', '110->01:50');
-    console.assert(minutesToDecimalTenthsStr(110)==='1,8','110->1,8h');
-    console.assert(minutesToDecimalTenthsStr(63)==='1,0','63->1,0h (trunc)');
-    console.assert(addMinutesZulu('23:50',20)==='00:10','rollover ok');
+  // Checkout
+  const area = document.querySelector('[data-ev="checkout-texto"]');
+  if (area) area.oninput = (e)=> state.checkoutTexto = e.target.value;
+  const shareC = document.querySelector('[data-ev="share-checkout"]');
+  if (shareC) shareC.onclick = ()=>{
+    const cabecalho = [
+      `Aluno: ${state.form.nomeAluno || '-'}`,
+      `CANAC: ${state.form.canacAluno || '-'}`,
+      `Data do voo: ${state.form.dataVoo || '-'}`
+    ].join('
+```
+
+');
+const infoVoo = buildInfoVooReport();
+const corpo = state.checkoutTexto || "";
+const msg = `${cabecalho}
+
+${infoVoo}
+
+${corpo}`.trim();
+shareWhatsApp(msg);
+};
+}
+
+```
+// ==========================
+// Relógio Zulu
+// ==========================
+function tick(){
+  state.clockZulu = dateToZuluHM(new Date());
+  const el = document.getElementById("clockZulu");
+  if (el) el.textContent = state.clockZulu + "Z";
+}
+
+// ==========================
+// Init
+// ==========================
+document.getElementById("year").textContent = new Date().getFullYear();
+setInterval(tick, 1000);
+render();
+
+// Testes rápidos (console)
+console.assert(diffHMtoMinutes('10:00','11:30')===90, '10:00-11:30=90');
+console.assert(minutesToHHMM(110)==='01:50', '110->01:50');
+console.assert(minutesToDecimalTenthsStr(110)==='1,8','110->1,8h');
+console.assert(minutesToDecimalTenthsStr(63)==='1,0','63->1,0h (trunc)');
+console.assert(addMinutesZulu('23:50',20)==='00:10','rollover ok');
+```
+
   </script>
 </body>
 </html>

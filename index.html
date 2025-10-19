@@ -12,7 +12,7 @@
     <!-- Header / Tabs -->
     <header class="sticky top-0 z-10 bg-white/80 backdrop-blur border-b">
       <div class="px-4 py-3 flex items-center justify-between">
-        <div class="text-lg font-semibold">InstrucaoaovoeFloripa</div>
+        <div class="text-lg font-semibold"></div><!-- título removido -->
         <div class="text-xs text-gray-500">Protótipo</div>
       </div>
       <nav class="px-2 pb-2 grid grid-cols-4 gap-2" id="tabs"></nav>
@@ -96,10 +96,16 @@
       return end - start;
     };
     const minutesToHHMM = (mins)=> `${pad2(Math.floor(mins/60))}:${pad2(mins%60)}`;
-    const minutesToDecimalTenths = (mins)=> (Math.floor(mins/6)/10).toFixed(1);
+
+    // Trunca em décimos de hora (0,1h = 6 min) e devolve string com vírgula
+    function minutesToDecimalTenthsStr(mins){
+      const tenths = Math.floor(mins / 6);         // 6 min = 0,1h (truncado)
+      const str = (tenths / 10).toFixed(1);        // "1.8"
+      return str.replace(".", ",");                // "1,8"
+    }
 
     // ==========================
-    // WhatsApp
+    // WhatsApp (somente Check-out)
     // ==========================
     async function shareWhatsApp(text, numero){
       try {
@@ -130,7 +136,7 @@
       return `<input ${attrs} class="w-full border rounded-xl p-3 bg-white" value="${value||""}" />`;
     }
     function TextArea(value, attrs=""){
-      return `<textarea ${attrs} class="w-full min-h-[240px] border rounded-2xl p-3 bg-white">${value||""}</textarea>`;
+      return `<textarea ${attrs} class="w-full border rounded-2xl p-3 bg-white resize-none">${value||""}</textarea>`;
     }
     function TimeField(id, label, value){
       const [hh="00", mm="00"] = String(value||"00:00").split(":").map(x=>pad2(+x||0));
@@ -220,16 +226,16 @@
       if ((state.voo.tipoVoo||"Local")==="Local"){
         const minsTotal = diffHMtoMinutes(state.voo.local?.acionamento||"00:00", state.voo.local?.corte||"00:00");
         const minsVoo   = diffHMtoMinutes(state.voo.local?.decolagem  ||"00:00", state.voo.local?.pouso  ||"00:00");
-        return { totalHHMM: minutesToHHMM(minsTotal), totalDecimal: minutesToDecimalTenths(minsTotal), vooHHMM: minutesToHHMM(minsVoo), vooDecimal: minutesToDecimalTenths(minsVoo), pernas:[] };
+        return { totalHHMM: minutesToHHMM(minsTotal), totalDecimal: minutesToDecimalTenthsStr(minsTotal), vooHHMM: minutesToHHMM(minsVoo), vooDecimal: minutesToDecimalTenthsStr(minsVoo), pernas:[] };
       } else {
         const acion = state.voo.navegacao?.acionamento || "00:00";
         const corte = state.voo.navegacao?.corte || "00:00";
         const minsTotal = diffHMtoMinutes(acion, corte);
         const pernas = (state.voo.navegacao?.perna||[]).map(p=>{
           const mm = diffHMtoMinutes(p.decolagem||"00:00", p.pouso||"00:00");
-          return { ...p, hhmm: minutesToHHMM(mm), dec: minutesToDecimalTenths(mm) };
+          return { ...p, hhmm: minutesToHHMM(mm), dec: minutesToDecimalTenthsStr(mm) };
         });
-        return { totalHHMM: minutesToHHMM(minsTotal), totalDecimal: minutesToDecimalTenths(minsTotal), vooHHMM:null, vooDecimal:null, pernas };
+        return { totalHHMM: minutesToHHMM(minsTotal), totalDecimal: minutesToDecimalTenthsStr(minsTotal), vooHHMM:null, vooDecimal:null, pernas };
       }
     }
 
@@ -326,10 +332,8 @@
 
       return `
         <div class="p-4 flex flex-col gap-4">
+          <!-- compartilhamento removido desta página -->
           ${infos.length===0 ? `<div class="text-sm text-gray-500">Selecione ao menos uma missão na página inicial.</div>` : ""}
-          <div class="flex gap-2">
-            <button class="px-3 py-2 rounded-xl bg-black text-white text-xs" data-ev="share-ficha">Compartilhar WhatsApp</button>
-          </div>
           ${itens}
         </div>`;
     }
@@ -351,13 +355,21 @@
         state.checkoutTexto = linhas.join("\n");
         state._checkoutInit = true;
       }
+
+      // Altura do textarea até o rodapé (sem rolagem extra)
+      const headerH = 56 + 48; // aprox header + tabs
+      const footerH = 56;      // aprox footer
+      const padding = 24 + 48; // paddings/margens
+      const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+      const taHeight = Math.max(200, vh - headerH - footerH - padding);
+
       return `
         <div class="p-4 flex flex-col gap-3">
           <div class="text-sm text-gray-600">Escreva aqui sua avaliação (livre). O texto vem pré-preenchido com o descritivo da(s) missão(ões), podendo ser editado.</div>
           <div class="flex gap-2 mb-2">
             <button class="px-3 py-2 rounded-xl bg-black text-white text-xs" data-ev="share-checkout">Compartilhar WhatsApp</button>
           </div>
-          ${TextArea(state.checkoutTexto, `data-ev="checkout-texto"`) }
+          ${TextArea(state.checkoutTexto, `data-ev="checkout-texto" style="height:${taHeight}px"`)}
         </div>`;
     }
 
@@ -429,19 +441,20 @@
         bindTimeField(`n-pou-${idx}`, v=>{ const per=[...(state.voo.navegacao?.perna||[])]; per[idx]={...per[idx], pouso:v}; state.voo.navegacao={...(state.voo.navegacao||{}), perna:per}; });
       });
 
-      // Ficha técnica share
-      const shareF = document.querySelector('[data-ev="share-ficha"]');
-      if (shareF) shareF.onclick = ()=>{
-        const ds = datasetByFase(state.form.fase);
-        const text = formatMissoesForText(ds, (state.form.missoes||[]).filter(Boolean));
-        shareWhatsApp(text);
-      };
-
       // Checkout
       const area = document.querySelector('[data-ev="checkout-texto"]');
       if (area) area.oninput = (e)=> state.checkoutTexto = e.target.value;
       const shareC = document.querySelector('[data-ev="share-checkout"]');
-      if (shareC) shareC.onclick = ()=> shareWhatsApp(state.checkoutTexto||"");
+      if (shareC) shareC.onclick = ()=>{
+        const cabecalho = [
+          `Aluno: ${state.form.nomeAluno || '-'}`,
+          `CANAC: ${state.form.canacAluno || '-'}`,
+          `Data do voo: ${state.form.dataVoo || '-'}`
+        ].join('\n');
+        const corpo = state.checkoutTexto || "";
+        const msg = `${cabecalho}\n\n${corpo}`.trim();
+        shareWhatsApp(msg);
+      };
     }
 
     // ==========================
@@ -463,7 +476,8 @@
     // Testes rápidos (console)
     console.assert(diffHMtoMinutes('10:00','11:30')===90, '10:00-11:30=90');
     console.assert(minutesToHHMM(110)==='01:50', '110->01:50');
-    console.assert(minutesToDecimalTenths(110)==='1.8','110->1.8h');
+    console.assert(minutesToDecimalTenthsStr(110)==='1,8','110->1,8h');
+    console.assert(minutesToDecimalTenthsStr(63)==='1,0','63->1,0h (trunc)');
     console.assert(addMinutesZulu('23:50',20)==='00:10','rollover ok');
   </script>
 </body>

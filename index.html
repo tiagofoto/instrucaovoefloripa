@@ -161,7 +161,28 @@
     }
 
     async function loadCSV(url){
-      const res = await fetch(url, { cache:'no-store' });
+      // Tenta buscar direto; se bloquear por CORS, tenta fallback com proxy de leitura r.jina.ai
+      const ctrl = new AbortController();
+      const t = setTimeout(()=> ctrl.abort(), 12000);
+      try{
+        const res = await fetch(url, { cache:'no-store', signal: ctrl.signal });
+        clearTimeout(t);
+        if (!res.ok) throw new Error(`Falha ao carregar: ${res.status}`);
+        return await res.text();
+      }catch(err){
+        clearTimeout(t);
+        // fallback CORS-friendly
+        try{
+          const noScheme = url.replace(/^https?:\/\//i, '');
+          const proxyUrl = `https://r.jina.ai/http://${noScheme}`; // proxy faz o fetch server-side e habilita CORS
+          const res2 = await fetch(proxyUrl, { cache:'no-store' });
+          if (!res2.ok) throw new Error(`Falha proxy: ${res2.status}`);
+          return await res2.text();
+        }catch(err2){
+          throw new Error(`Erro ao carregar planilha (CORS/bloqueio): ${err2.message||err2}`);
+        }
+      }
+    });
       if (!res.ok) throw new Error(`Falha ao carregar: ${res.status}`);
       return await res.text();
     }
@@ -359,7 +380,7 @@
         '<div class="text-xs text-gray-500">Carregando planilhas…</div>' :
         `<div class="text-xs ${flags.PP&&flags.PC&&flags.INVA?'text-green-600':'text-amber-600'}">Planilhas: PP ${flags.PP?'ok':'…'} • PC ${flags.PC?'ok':'…'} • INVA ${flags.INVA?'ok':'…'}</div>`;
 
-      const err = state.erroCarregamento ? `<div class="text-xs text-red-600">${state.erroCarregamento}</div>` : '';
+      const err = state.erroCarregamento ? `<div class="text-xs text-red-600">${state.erroCarregamento}. Dica: abra pelo GitHub Pages (HTTPS) ou deixe que o app use o fallback interno.</div>` : '';
 
       return `
         <div class="p-4 flex flex-col gap-4">
@@ -633,6 +654,15 @@
 
     // Testes adicionais (CSV/rollover)
     console.assert(diffHMtoMinutes('23:50','00:10')===20, 'overnight 23:50-00:10=20');
+    console.assert(diffHMtoMinutes('00:00','00:00')===0, '00:00-00:00=0');
+    console.assert(minutesToHHMM(0)==='00:00','0->00:00');
+    console.assert(minutesToDecimalTenthsStr(5)==='0,0','5min->0,0h (trunc)');
+    console.assert(minutesToDecimalTenthsStr(6)==='0,1','6min->0,1h');
+    // smoke test: após carregar, deve haver ao menos 1 missão em alguma fase
+    setTimeout(()=>{
+      const someCount = (MISSOES_POR_FASE.PP?.length||0) + (MISSOES_POR_FASE.PC?.length||0) + (MISSOES_POR_FASE.INVA?.length||0);
+      console.assert(someCount>0, 'CSV não populou nenhuma missão (possível CORS).');
+    }, 2000);
     console.assert(diffHMtoMinutes('00:00','00:00')===0, '00:00-00:00=0');
     console.assert(minutesToHHMM(0)==='00:00','0->00:00');
     console.assert(minutesToDecimalTenthsStr(5)==='0,0','5min->0,0h (trunc)');

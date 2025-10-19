@@ -32,43 +32,13 @@
 
   <script>
     // ==========================
-    // DADOS (amplie quando quiser)
+    // CONFIG: Fontes (Google Sheets CSV publicados)
     // ==========================
-    const MISSOES = {
-      PP: {
-        "PS-01": {
-          tempo_voo: "01:00:00",
-          pousos: 1,
-          conteudo: [
-            "Mudanças de Atitude (Subidas, descidas e nivelamento); Curvas de Pequena inclinação; Voo Planado"
-          ],
-          pre_requisitos: ["CMA", "Ground School"],
-          registro: "DC",
-          competencias: ["Commitment (CMT)", "Application of Knowledge (KNO)", "Communication (COM)"]
-        },
-        "PS-02": {
-          tempo_voo: "01:00:00",
-          pousos: 1,
-          conteudo: ["Coordenação de comandos; Curvas de Média inclinação; Perda de Sustentação"],
-          pre_requisitos: ["PS-01"],
-          registro: "DC",
-          competencias: ["CMT", "KNO", "COM"]
-        }
-      },
-      PC: {},
-      INVA: {}
+    const CSV_URLS = {
+      PP: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQi36jUxlUkQBmzYm7DpFG3HH9GQoiYbGdybwxf8mnYPjY3EDgrNnpCqu4BN9B7censF_2xcpH7WxZq/pub?gid=0&single=true&output=csv",
+      PC: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQi36jUxlUkQBmzYm7DpFG3HH9GQoiYbGdybwxf8mnYPjY3EDgrNnpCqu4BN9B7censF_2xcpH7WxZq/pub?gid=1936904888&single=true&output=csv",
+      INVA: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQi36jUxlUkQBmzYm7DpFG3HH9GQoiYbGdybwxf8mnYPjY3EDgrNnpCqu4BN9B7censF_2xcpH7WxZq/pub?gid=2094617121&single=true&output=csv"
     };
-
-    const FASES = ["PP","PPR","PC","INVA","PLA"];
-    const MISSOES_POR_FASE = {
-      PP: ["PS-01","PS-02","PS-03","PS-04","PS-05","PS-06","PS-07","PS-08","PS-09","PS-10","PS-11","PS-12","PS-13","PS-14","PS-15","PS-16","PS-17","PS-X1","PS-18","AP-01","AP-02","AP-03","AP-04","AP-05","AP-06","AP-07","AP-08","AP-09","NV-01","NV-02","NV-03","NV-X1","NT-01","NT-02","NT-03","PRCQ","CQPP"],
-      PPR: ["PS-03","PS-05","PS-07","PS-10","PS-15","PS-17","PS-X1","PS-18","AP-01","AP-05","AP-06","AP-07","AP-08","AP-09","NV-01","NV-02","NV-03","NV-X1","NT-01","NT-02","NT-03","PRCQ","CQPP"],
-      PC: ["AD-01","AD-02","AD-03","AD-04","AD-05","AD-06","AD-07","AD-08","AP-01","AP-02","AP-03","AP-04","AP-05","AP-06","AP-07","AP-08","MB-01","MB-02","MB-03","MB-04","MB-05","MB-06","NV-01","NV-02","NV-03","NV-04","NV-05","NV-06","NV-07","NV-08","NV-09","NV-10","NV-11","NV-12","NV-13","NV-14","NV-15","NT-01","NT-02","NT-03","NT-04","NT-05","PRCQ","CQPP"],
-      INVA: ["PI-01","PI-02","PI-03","PI-04","PI-05","PI-06","PI-07","PI-08","PI-09","PI-10","PI-11","PI-12","PI-13","PI-14","PI-15","PI-16","NV-01","NV-02","PRCQ","CQPP"],
-      PLA: []
-    };
-    const AERONAVES = ["PR-FLE","PR-FLD","PR-FLN","PT-MJF","PR-MGX","PR-FLM"];
-    const TIPOS_VOO = ["Local","Navegação"];
 
     // ==========================
     // STATE
@@ -79,8 +49,25 @@
       voo: { tipoVoo:"Local", aeronave:"", local:{}, navegacao:{} },
       clockZulu: "--:--",
       checkoutTexto: "",
-      _checkoutInit: false
+      _checkoutInit: false,
+      datasets: { PP: null, PC: null, INVA: null },
+      loading: { PP: false, PC: false, INVA: false },
+      lastError: null
     };
+
+    // ==========================
+    // LISTAS FIXAS (para seleção)
+    // ==========================
+    const FASES = ["PP","PPR","PC","INVA","PLA"]; // PLA sem base
+    const MISSOES_POR_FASE = {
+      PP: ["PS-01","PS-02","PS-03","PS-04","PS-05","PS-06","PS-07","PS-08","PS-09","PS-10","PS-11","PS-12","PS-13","PS-14","PS-15","PS-16","PS-17","PS-X1","PS-18","AP-01","AP-02","AP-03","AP-04","AP-05","AP-06","AP-07","AP-08","AP-09","NV-01","NV-02","NV-03","NV-X1","NT-01","NT-02","NT-03","PRCQ","CQPP"],
+      PPR: ["PS-03","PS-05","PS-07","PS-10","PS-15","PS-17","PS-X1","PS-18","AP-01","AP-05","AP-06","AP-07","AP-08","AP-09","NV-01","NV-02","NV-03","NV-X1","NT-01","NT-02","NT-03","PRCQ","CQPP"],
+      PC: ["AD-01","AD-02","AD-03","AD-04","AD-05","AD-06","AD-07","AD-08","AP-01","AP-02","AP-03","AP-04","AP-05","AP-06","AP-07","AP-08","MB-01","MB-02","MB-03","MB-04","MB-05","MB-06","NV-01","NV-02","NV-03","NV-04","NV-05","NV-06","NV-07","NV-08","NV-09","NV-10","NV-11","NV-12","NV-13","NV-14","NV-15","NT-01","NT-02","NT-03","NT-04","NT-05","PRCQ","CQPP"],
+      INVA: ["PI-01","PI-02","PI-03","PI-04","PI-05","PI-06","PI-07","PI-08","PI-09","PI-10","PI-11","PI-12","PI-13","PI-14","PI-15","PI-16","NV-01","NV-02","PRCQ","CQPP"],
+      PLA: []
+    };
+    const AERONAVES = ["PR-FLE","PR-FLD","PR-FLN","PT-MJF","PR-MGX","PR-FLM"];
+    const TIPOS_VOO = ["Local","Navegação"];
 
     // ==========================
     // HORA ZULU helpers
@@ -96,41 +83,122 @@
     const diffHMtoMinutes = (startHM, endHM)=>{
       const [sh,sm] = startHM.split(":").map(Number);
       const [eh,em] = endHM.split(":").map(Number);
-      let start = sh*60 + sm; let end = eh*60 + em; if (end < start) end += 24*60;
+      let start = sh*60 + sm; let end = eh*60 + em; if (end < start) end += 24*60; // roll-over
       return end - start;
     };
     const minutesToHHMM = (mins)=> `${pad2(Math.floor(mins/60))}:${pad2(mins%60)}`;
-
-    // Trunca em décimos de hora (0,1h = 6 min) e devolve string com vírgula
     function minutesToDecimalTenthsStr(mins){
-      const tenths = Math.floor(mins / 6);         // 6 min = 0,1h (truncado)
-      const str = (tenths / 10).toFixed(1);        // "1.8"
-      return str.replace(".", ",");                // "1,8"
+      const tenths = Math.floor(mins / 6); // trunc para 0,1h
+      return (tenths / 10).toFixed(1).replace(".", ",");
     }
 
     // ==========================
-    // WhatsApp (somente Check-out)
+    // CSV loader (Google Sheets)
     // ==========================
-    async function shareWhatsApp(text, numero){
+    function parseCSV(text){
+      // Parser simples e robusto (suporta aspas, vírgulas em campos, CRLF)
+      const out = [];
+      let i=0, field='', row=[], inQuotes=false;
+      const pushField=()=>{ row.push(field); field=''; };
+      const pushRow=()=>{ if (row.length) out.push(row); row=[]; };
+      while(i < text.length){
+        const c = text[i];
+        if (inQuotes){
+          if (c==='"'){
+            if (text[i+1]==='"'){ field+='"'; i++; } else { inQuotes=false; }
+          } else { field+=c; }
+        } else {
+          if (c==='"'){ inQuotes=true; }
+          else if (c===','){ pushField(); }
+          else if (c==='
+'){ pushField(); pushRow(); }
+          else if (c==='
+'){ /* ignore */ }
+          else { field+=c; }
+        }
+        i++;
+      }
+      pushField(); pushRow();
+      // primeira linha = cabeçalho
+      const headers = (out.shift()||[]).map(h=>h.trim());
+      return out.filter(r=>r.some(x=>String(x).trim().length>0)).map(cols=>{
+        const obj={};
+        headers.forEach((h,idx)=> obj[h]= (cols[idx]||'').trim());
+        return obj;
+      });
+    }
+
+    function normalizeRow(row){
+      // Esperado: codigo, tempo_voo, pousos, pre_requisitos, registro, competencias, conteudo
+      const splitList = (s)=> String(s||'').split(/\||;/).map(x=>x.trim()).filter(Boolean);
+      return {
+        codigo: row.codigo || row.Codigo || row.CÓDIGO || row.code || row.CODIGO || '',
+        tempo_voo: row.tempo_voo || row["tempo de voo"] || row.tempo || '',
+        pousos: Number(row.pousos || row.pouso || 0) || 0,
+        pre_requisitos: splitList(row.pre_requisitos || row["pre-requisitos"] || row.prerequisitos),
+        registro: row.registro || row.reg || '',
+        competencias: splitList(row.competencias || row["competências"] || row.comp || ''),
+        conteudo: row.conteudo || row["conteúdo"] || row.manobras || ''
+      };
+    }
+
+    async function loadDatasetFor(fase){
+      if (!CSV_URLS[fase] || state.loading[fase] || state.datasets[fase]) return;
+      state.loading[fase] = true; state.lastError = null;
+      try{
+        const res = await fetch(CSV_URLS[fase], { cache: 'no-cache' });
+        if (!res.ok) throw new Error('Falha ao baixar CSV: '+res.status);
+        const text = await res.text();
+        const rows = parseCSV(text).map(normalizeRow).filter(r=>r.codigo);
+        const map = {};
+        rows.forEach(r=>{ map[r.codigo] = {
+          tempo_voo: r.tempo_voo,
+          pousos: r.pousos,
+          conteudo: [r.conteudo],
+          pre_requisitos: r.pre_requisitos,
+          registro: r.registro,
+          competencias: r.competencias
+        }; });
+        state.datasets[fase] = map;
+      } catch(e){
+        state.lastError = String(e);
+      } finally {
+        state.loading[fase] = false;
+        render();
+      }
+    }
+
+    function datasetByFase(fase){
+      if (fase==="PC") return state.datasets.PC || {};
+      if (fase==="INVA") return state.datasets.INVA || {};
+      if (fase==="PP" || fase==="PPR") return state.datasets.PP || {};
+      return {};
+    }
+
+    // ==========================
+    // WhatsApp
+    // ==========================
+    async function shareWhatsApp(text){
       try {
         if (navigator.share && (!navigator.canShare || navigator.canShare({ text }))){
           await navigator.share({ text });
           return;
         }
       } catch {}
-      const base = numero ? `https://wa.me/${numero}?text=` : `https://api.whatsapp.com/send?text=`;
-      window.open(base + encodeURIComponent(text), "_blank");
+      const url = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(text);
+      window.open(url, '_blank');
+    }
+
+    function semicolonSplitToItems(raw){
+      const arr = Array.isArray(raw) ? raw : [String(raw||"")];
+      return arr.flatMap(s=> String(s).split(";")).map(x=>x.trim()).filter(Boolean);
     }
 
     // ==========================
-    // Helpers UI
+    // UI helpers
     // ==========================
     function Field(label, inner){
-      return `
-        <div class="flex flex-col gap-1">
-          <label class="text-sm text-gray-700">${label}</label>
-          ${inner}
-        </div>`;
+      return `<div class="flex flex-col gap-1"><label class="text-sm text-gray-700">${label}</label>${inner}</div>`;
     }
     function Select(options, value, attrs=""){
       const opts = options.map(o=>`<option value="${o}" ${o===value?'selected':''}>${o}</option>`).join("");
@@ -148,7 +216,7 @@ function TimeField(id, label, value){
   const [hh="00", mm="00"] = String(value||"00:00").split(":").map(x=>pad2(+x||0));
   const HOURS = Array.from({length:24}, (_,i)=>pad2(i)).map(h=>`<option value="${h}" ${h===hh?'selected':''}>${h}</option>`).join("");
   const MINUTES = Array.from({length:60}, (_,i)=>pad2(i)).map(m=>`<option value="${m}" ${m===mm?'selected':''}>${m}</option>`).join("");
-  const html = `
+  return `
     <div class="flex flex-col gap-1">
       <label class="text-sm text-gray-700">${label}</label>
       <div class="flex items-center gap-2">
@@ -159,60 +227,30 @@ function TimeField(id, label, value){
       </div>
       <input type="hidden" id="${id}" value="${hh}:${mm}" />
     </div>`;
-  return html;
 }
 function bindTimeField(id, onChange){
   const hh = document.querySelector(`select[data-id="${id}"][data-part="hh"]`);
   const mm = document.querySelector(`select[data-id="${id}"][data-part="mm"]`);
   const hidden = document.getElementById(id);
   const btn = document.querySelector(`button[data-id="${id}"][data-action="nowz"]`);
-  function update(){ hidden.value = `${hh.value}:${mm.value}`; hidden.dispatchEvent(new Event("change")); }
+  function update(){ hidden.value = `${hh.value}:${mm.value}`; hidden.dispatchEvent(new Event('change')); }
   if (hh) hh.onchange = update;
   if (mm) mm.onchange = update;
-  if (hidden) hidden.addEventListener("change", ()=> { onChange(hidden.value); render(); }); // <<< re-render ao alterar hora
+  if (hidden) hidden.addEventListener('change', ()=> { onChange(hidden.value); render(); });
   if (btn) btn.onclick = ()=>{ const n=new Date(); hh.value=pad2(n.getUTCHours()); mm.value=pad2(n.getUTCMinutes()); update(); };
 }
 
-function semicolonSplitToItems(raw){
-  const arr = Array.isArray(raw) ? raw : [String(raw||"")];
-  return arr.flatMap(s=> String(s).split(";")).map(x=>x.trim()).filter(Boolean);
-}
-function formatMissoesForText(dataset, codes){
-  const blocks = [];
-  (codes||[]).forEach(code=>{
-    const d = dataset?.[code];
-    blocks.push(`Missão ${code}`);
-    const itens = d ? semicolonSplitToItems(d.conteudo) : [];
-    itens.forEach((item, idx)=> blocks.push(`- ${item}${idx < itens.length-1 ? ';' : ''}`));
-    if (!itens.length) blocks.push('- (sem itens)');
-    blocks.push('');
-  });
-  return blocks.join('
-```
-
-');
-}
-function datasetByFase(fase){
-if (fase==="PC") return MISSOES.PC;
-if (fase==="INVA") return MISSOES.INVA;
-if (fase==="PP" || fase==="PPR") return MISSOES.PP;
-return {};
-}
-
-```
 // ==========================
 // Páginas
 // ==========================
 function PageInicial(){
   const todayISO = new Date().toISOString().slice(0,10);
   if (!state.form.dataVoo) state.form.dataVoo = todayISO;
-
   const missoes = (state.form.missoes||[]).map((m,idx)=>`
     <div class="p-3 rounded-2xl border shadow-sm bg-white flex items-center gap-3">
       ${Select(["",...MISSOES_POR_FASE[state.form.fase||"PP"]], m, `data-ev="missao" data-idx="${idx}"`)}
       <button class="ml-auto text-sm text-red-600" data-ev="remove-missao" data-idx="${idx}">Remover</button>
     </div>`).join("");
-
   return `
     <div class="p-4 flex flex-col gap-4">
       <div class="grid grid-cols-1 gap-4">
@@ -221,7 +259,6 @@ function PageInicial(){
         ${Field("Data do Voo", `<input type="date" class="w-full border rounded-xl p-3" value="${state.form.dataVoo||todayISO}" data-ev="dataVoo" />`)}
         ${Field("Fase da Instrução", Select(FASES, state.form.fase||"PP", `data-ev="fase"`))}
       </div>
-
       <div class="mt-2">
         <div class="flex items-center justify-between mb-2">
           <span class="text-sm text-gray-700">Missões</span>
@@ -260,7 +297,6 @@ function PageInfoVoo(){
       navegacao: state.voo.navegacao || { acionamento: acion, perna: [{ decolagem: deco, pouso: addMinutesZulu(deco,30)}], corte }
     };
   }
-
   const tipoLocal = `
     ${TimeField("l-acion","Acionamento (Zulu)", state.voo.local?.acionamento||"")}
     ${TimeField("l-decol","Decolagem (Zulu)", state.voo.local?.decolagem||"")}
@@ -294,20 +330,15 @@ function PageInfoVoo(){
         ${Field("Aeronave", Select(["",...AERONAVES], state.voo.aeronave||"", `data-ev="aeronave"`))}
         ${Field("Tipo de Voo", Select(TIPOS_VOO, state.voo.tipoVoo||"Local", `data-ev="tipoVoo"`))}
       </div>
-
       ${(state.voo.tipoVoo||"Local")==="Local" ? `<div class="grid grid-cols-1 gap-3">${tipoLocal}</div>` : `<div class="grid grid-cols-1 gap-3">${tipoNav}</div>`}
-
       <div class="mt-2 p-3 rounded-2xl bg-gray-50 border">
         <div class="text-sm text-gray-600 mb-1">Somatórios</div>
         <div class="text-sm">Total (Acionamento → Corte): <b>${r.totalHHMM}</b> – <b>${r.totalDecimal} h</b></div>
         ${(state.voo.tipoVoo||"Local")==="Local"
           ? `<div class="text-sm">Decolagem → Pouso: <b>${r.vooHHMM}</b> – <b>${r.vooDecimal} h</b></div>`
-          : `<div class="text-sm flex flex-col gap-1">
-              ${r.pernas.map((p,i)=>`<div>Perna ${i+1} (Dec→Pou): <b>${p.hhmm}</b> – <b>${p.dec} h</b></div>`).join("")}
-            </div>`
+          : `<div class="text-sm flex flex-col gap-1">${r.pernas.map((p,i)=>`<div>Perna ${i+1} (Dec→Pou): <b>${p.hhmm}</b> – <b>${p.dec} h</b></div>`).join("")}</div>`
         }
       </div>
-
       <div class="sticky bottom-3 p-4 rounded-2xl bg-black text-white text-center text-xl tracking-wider">
         Horário Zulu: <b id="clockZulu">${state.clockZulu}Z</b>
       </div>
@@ -315,14 +346,18 @@ function PageInfoVoo(){
 }
 
 function PageFichaTecnica(){
-  const ds = datasetByFase(state.form.fase);
+  const fase = state.form.fase;
+  // Gatilho de carregamento lazy
+  loadDatasetFor(fase);
+  const ds = datasetByFase(fase);
   const cods = (state.form.missoes||[]).filter(Boolean);
   const infos = cods.map(code=>({ code, data: ds?.[code] }));
+  const loading = state.loading.PP || state.loading.PC || state.loading.INVA;
 
   const itens = infos.map(m=>`
     <div class="p-4 rounded-2xl border bg-white shadow-sm">
       <div class="text-lg font-semibold mb-2">Missão: ${m.code}</div>
-      ${!m.data ? `<div class="text-sm text-red-600">Não encontrado na base de dados embutida.</div>` : `
+      ${!m.data ? `<div class="text-sm text-red-600">${state.lastError?('Erro: '+state.lastError):'Carregando ou não encontrado na base.'}</div>` : `
         <div class="flex flex-col gap-2 text-sm">
           <div><b>Tempo de Voo:</b> ${m.data.tempo_voo||"-"}</div>
           <div><b>Pousos:</b> ${m.data.pousos ?? "-"}</div>
@@ -332,9 +367,7 @@ function PageFichaTecnica(){
           <div>
             <b>Conteúdo / Manobras:</b>
             <div class="mt-1">Missão ${m.code}</div>
-            <ul class="ml-5">
-              ${semicolonSplitToItems(m.data.conteudo).map((c,i,arr)=>`<li>- ${c}${i<arr.length-1?';':''}</li>`).join("")}
-            </ul>
+            <ul class="ml-5">${semicolonSplitToItems(m.data.conteudo).map((c,i,arr)=>`<li>- ${c}${i<arr.length-1?';':''}</li>`).join("")}</ul>
           </div>
         </div>`}
     </div>
@@ -342,7 +375,7 @@ function PageFichaTecnica(){
 
   return `
     <div class="p-4 flex flex-col gap-4">
-      <!-- compartilhamento removido desta página -->
+      ${loading? '<div class="text-sm text-gray-500">Carregando dados…</div>': ''}
       ${infos.length===0 ? `<div class="text-sm text-gray-500">Selecione ao menos uma missão na página inicial.</div>` : ""}
       ${itens}
     </div>`;
@@ -351,7 +384,7 @@ function PageFichaTecnica(){
 function buildInfoVooReport(){
   const r = pageInfoResultados();
   const tipo = state.voo.tipoVoo || "Local";
-  let linhas = [];
+  const linhas = [];
   if (tipo === "Local"){
     linhas.push("Informações do voo (Local)");
     linhas.push(`Aeronave: ${state.voo.aeronave || '-'}`);
@@ -379,7 +412,9 @@ function buildInfoVooReport(){
 
 ```
 function PageCheckout(){
-  const ds = datasetByFase(state.form.fase);
+  const fase = state.form.fase;
+  loadDatasetFor(fase); // garante base para pré-preencher
+  const ds = datasetByFase(fase);
   const cods = (state.form.missoes||[]).filter(Boolean);
   if (!state._checkoutInit){
     const linhas=[];
@@ -392,49 +427,34 @@ function PageCheckout(){
       }
       linhas.push("");
     });
-    state.checkoutTexto = linhas.join("
+    if (linhas.length) state.checkoutTexto = linhas.join("
 ```
 
 ");
 state._checkoutInit = true;
 }
-
-```
-  // Altura do textarea até o rodapé (sem rolagem extra)
-  const headerH = 56 + 48; // aprox header + tabs
-  const footerH = 56;      // aprox footer
-  const padding = 24 + 48; // paddings/margens
-  const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
-  const taHeight = Math.max(200, vh - headerH - footerH - padding);
-
-  return `
-    <div class="p-4 flex flex-col gap-3">
-      <div class="text-sm text-gray-600">Escreva aqui sua avaliação (livre). O texto vem pré-preenchido com o descritivo da(s) missão(ões), podendo ser editado.</div>
-      <div class="flex gap-2 mb-2">
-        <button class="px-3 py-2 rounded-xl bg-black text-white text-xs" data-ev="share-checkout">Compartilhar WhatsApp</button>
-      </div>
-      ${TextArea(state.checkoutTexto, `data-ev="checkout-texto" style="height:${taHeight}px"`)}
-    </div>`;
+// Altura do textarea até o rodapé
+const headerH = 56 + 48, footerH = 56, padding = 24 + 48;
+const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+const taHeight = Math.max(200, vh - headerH - footerH - padding);
+return `        <div class="p-4 flex flex-col gap-3">           <div class="text-sm text-gray-600">Escreva aqui sua avaliação (livre). O texto vem pré-preenchido com o descritivo da(s) missão(ões), podendo ser editado.</div>           <div class="flex gap-2 mb-2">             <button class="px-3 py-2 rounded-xl bg-black text-white text-xs" data-ev="share-checkout">Compartilhar WhatsApp</button>           </div>
+          ${TextArea(state.checkoutTexto,`data-ev="checkout-texto" style="height:${taHeight}px"`)}         </div>`;
 }
 
+```
 // ==========================
-// Render raiz + bindings
+// Render & Bindings
 // ==========================
 function render(){
-  // tabs
   const tabs = ["Inicial","Informações do voo","Ficha Técnica","Check-out"];
-  document.getElementById("tabs").innerHTML = tabs.map(t=>`
-    <button data-aba="${t}" class="py-2 rounded-2xl text-sm ${state.aba===t?'bg-black text-white':'bg-gray-200 text-gray-800'}">${t}</button>
-  `).join("");
-
-  // page
+  document.getElementById("tabs").innerHTML = tabs.map(t=>
+    `<button data-aba="${t}" class="py-2 rounded-2xl text-sm ${state.aba===t?'bg-black text-white':'bg-gray-200 text-gray-800'}">${t}</button>`
+  ).join("");
   const app = document.getElementById("app");
-  app.innerHTML =
-    state.aba==="Inicial" ? PageInicial()
-  : state.aba==="Informações do voo" ? PageInfoVoo()
-  : state.aba==="Ficha Técnica" ? PageFichaTecnica()
-  : PageCheckout();
-
+  app.innerHTML = state.aba==="Inicial" ? PageInicial()
+                : state.aba==="Informações do voo" ? PageInfoVoo()
+                : state.aba==="Ficha Técnica" ? PageFichaTecnica()
+                : PageCheckout();
   bind();
 }
 
@@ -443,7 +463,6 @@ function bind(){
   document.querySelectorAll('[data-aba]').forEach(b=>{
     b.onclick = ()=> { state.aba = b.getAttribute('data-aba'); if (state.aba!=="Check-out") state._checkoutInit = false; render(); };
   });
-
   // Inicial
   const set = (k)=> (e)=> state.form[k] = e.target.value;
   document.querySelectorAll('[data-ev="nomeAluno"]').forEach(el=> el.oninput = set('nomeAluno'));
@@ -453,84 +472,44 @@ function bind(){
   document.querySelectorAll('[data-ev="missao"]').forEach(el=> el.onchange = (e)=>{ const idx=+el.getAttribute('data-idx'); state.form.missoes[idx]=e.target.value; });
   const addM = document.querySelector('[data-ev="add-missao"]'); if (addM) addM.onclick = ()=> { state.form.missoes.push(""); render(); };
   document.querySelectorAll('[data-ev="remove-missao"]').forEach(el=> el.onclick = ()=>{ const idx=+el.getAttribute('data-idx'); state.form.missoes = state.form.missoes.filter((_,i)=>i!==idx); render(); });
-
   // Info voo
-  const aer = document.querySelector('[data-ev="aeronave"]'); if (aer) aer.onchange = (e)=> { state.voo.aeronave = e.target.value; /* não precisa re-render */ };
+  const aer = document.querySelector('[data-ev="aeronave"]'); if (aer) aer.onchange = (e)=> { state.voo.aeronave = e.target.value; };
   const tipo = document.querySelector('[data-ev="tipoVoo"]'); if (tipo) tipo.onchange = (e)=> { state.voo.tipoVoo = e.target.value; render(); };
-  // TimeFields (re-render ao alterar)
   bindTimeField("l-acion", v=> state.voo.local={...(state.voo.local||{}), acionamento:v});
   bindTimeField("l-decol", v=> state.voo.local={...(state.voo.local||{}), decolagem:v});
   bindTimeField("l-pouso", v=> state.voo.local={...(state.voo.local||{}), pouso:v});
   bindTimeField("l-corte", v=> state.voo.local={...(state.voo.local||{}), corte:v});
   bindTimeField("n-acion", v=> state.voo.navegacao={...(state.voo.navegacao||{}), acionamento:v});
   bindTimeField("n-corte", v=> state.voo.navegacao={...(state.voo.navegacao||{}), corte:v});
-  // pernas
-  const addP = document.querySelector('[data-ev="add-perna"]'); if (addP) addP.onclick = ()=>{
-    const per = state.voo.navegacao?.perna || [];
-    const last = per[per.length-1] || { decolagem: state.voo.navegacao?.acionamento || "00:00", pouso: addMinutesZulu(state.voo.navegacao?.acionamento || "00:00", 30) };
-    const nextDec = addMinutesZulu(last.pouso, 30);
-    const nextPou = addMinutesZulu(nextDec, 30);
-    state.voo.navegacao = { ...(state.voo.navegacao||{}), perna: [...per, { decolagem: nextDec, pouso: nextPou }] };
-    render();
-  };
-  document.querySelectorAll('[data-ev="remove-perna"]').forEach(el=> el.onclick = ()=>{
-    const idx = +el.getAttribute('data-idx');
-    const per = [...(state.voo.navegacao?.perna||[])];
-    per.splice(idx,1);
-    state.voo.navegacao = { ...(state.voo.navegacao||{}), perna: per };
-    render();
-  });
-  (state.voo.navegacao?.perna||[]).forEach((p,idx)=>{
-    bindTimeField(`n-dec-${idx}`, v=>{ const per=[...(state.voo.navegacao?.perna||[])]; per[idx]={...per[idx], decolagem:v}; state.voo.navegacao={...(state.voo.navegacao||{}), perna:per}; });
-    bindTimeField(`n-pou-${idx}`, v=>{ const per=[...(state.voo.navegacao?.perna||[])]; per[idx]={...per[idx], pouso:v}; state.voo.navegacao={...(state.voo.navegacao||{}), perna:per}; });
-  });
-
-  // Checkout
-  const area = document.querySelector('[data-ev="checkout-texto"]');
-  if (area) area.oninput = (e)=> state.checkoutTexto = e.target.value;
-  const shareC = document.querySelector('[data-ev="share-checkout"]');
-  if (shareC) shareC.onclick = ()=>{
-    const cabecalho = [
-      `Aluno: ${state.form.nomeAluno || '-'}`,
-      `CANAC: ${state.form.canacAluno || '-'}`,
-      `Data do voo: ${state.form.dataVoo || '-'}`
-    ].join('
+  const addP = document.querySelector('[data-ev="add-perna"]'); if (addP) addP.onclick = ()=>{ const per = state.voo.navegacao?.perna || []; const last = per[per.length-1] || { decolagem: state.voo.navegacao?.acionamento || "00:00", pouso: addMinutesZulu(state.voo.navegacao?.acionamento || "00:00", 30) }; const nextDec = addMinutesZulu(last.pouso, 30); const nextPou = addMinutesZulu(nextDec, 30); state.voo.navegacao = { ...(state.voo.navegacao||{}), perna: [...per, { decolagem: nextDec, pouso: nextPou }] }; render(); };
+  document.querySelectorAll('[data-ev="remove-perna"]').forEach(el=> el.onclick = ()=>{ const idx = +el.getAttribute('data-idx'); const per = [...(state.voo.navegacao?.perna||[])]; per.splice(idx,1); state.voo.navegacao = { ...(state.voo.navegacao||{}), perna: per }; render(); });
+  (state.voo.navegacao?.perna||[]).forEach((p,idx)=>{ bindTimeField(`n-dec-${idx}`, v=>{ const per=[...(state.voo.navegacao?.perna||[])]; per[idx]={...per[idx], decolagem:v}; state.voo.navegacao={...(state.voo.navegacao||{}), perna:per}; }); bindTimeField(`n-pou-${idx}`, v=>{ const per=[...(state.voo.navegacao?.perna||[])]; per[idx]={...per[idx], pouso:v}; state.voo.navegacao={...(state.voo.navegacao||{}), perna:per}; }); });
+  // Checkout share
+  const area = document.querySelector('[data-ev="checkout-texto"]'); if (area) area.oninput = (e)=> state.checkoutTexto = e.target.value;
+  const shareC = document.querySelector('[data-ev="share-checkout"]'); if (shareC) shareC.onclick = ()=>{ const cab = [`Aluno: ${state.form.nomeAluno || '-'}`, `CANAC: ${state.form.canacAluno || '-'}`, `Data do voo: ${state.form.dataVoo || '-'}`].join('
 ```
 
-');
-const infoVoo = buildInfoVooReport();
-const corpo = state.checkoutTexto || "";
-const msg = `${cabecalho}
+'); const info = buildInfoVooReport(); const corpo = state.checkoutTexto || ""; const msg = `${cab}
 
-${infoVoo}
+${info}
 
-${corpo}`.trim();
-shareWhatsApp(msg);
-};
+${corpo}`.trim(); shareWhatsApp(msg); };
 }
 
 ```
 // ==========================
-// Relógio Zulu
+// Relógio Zulu e Init
 // ==========================
-function tick(){
-  state.clockZulu = dateToZuluHM(new Date());
-  const el = document.getElementById("clockZulu");
-  if (el) el.textContent = state.clockZulu + "Z";
-}
-
-// ==========================
-// Init
-// ==========================
+function tick(){ state.clockZulu = dateToZuluHM(new Date()); const el = document.getElementById('clockZulu'); if (el) el.textContent = state.clockZulu + 'Z'; }
 document.getElementById("year").textContent = new Date().getFullYear();
 setInterval(tick, 1000);
 render();
 
-// Testes rápidos (console)
-console.assert(diffHMtoMinutes('10:00','11:30')===90, '10:00-11:30=90');
+// Testes rápidos
+console.assert(diffHMtoMinutes('10:00','11:30')===90, 'diff ok');
 console.assert(minutesToHHMM(110)==='01:50', '110->01:50');
 console.assert(minutesToDecimalTenthsStr(110)==='1,8','110->1,8h');
-console.assert(minutesToDecimalTenthsStr(63)==='1,0','63->1,0h (trunc)');
+console.assert(minutesToDecimalTenthsStr(63)==='1,0','63->1,0h');
 console.assert(addMinutesZulu('23:50',20)==='00:10','rollover ok');
 ```
 

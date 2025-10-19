@@ -28,48 +28,38 @@
 
   <script>
     // ==========================
-    // DADOS (amplie quando quiser)
+    // FONTE DOS DADOS (planilhas publicadas em CSV)
     // ==========================
-    const MISSOES = {
-      PP: {
-        "PS-01": {
-          tempo_voo: "01:00:00",
-          pousos: 1,
-          conteudo: [
-            "Mudanças de Atitude (Subidas, descidas e nivelamento); Curvas de Pequena inclinação; Voo Planado"
-          ],
-          pre_requisitos: ["CMA", "Ground School"],
-          registro: "DC",
-          competencias: ["Commitment (CMT)", "Application of Knowledge (KNO)", "Communication (COM)"]
-        },
-        "PS-02": {
-          tempo_voo: "01:00:00",
-          pousos: 1,
-          conteudo: ["Coordenação de comandos; Curvas de Média inclinação; Perda de Sustentação"],
-          pre_requisitos: ["PS-01"],
-          registro: "DC",
-          competencias: ["CMT", "KNO", "COM"]
-        }
-      },
-      PC: {},
-      INVA: {}
+    const CSV_URLS = {
+      PP: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQi36jUxlUkQBmzYm7DpFG3HH9GQoiYbGdybwxf8mnYPjY3EDgrNnpCqu4BN9B7censF_2xcpH7WxZq/pub?gid=0&single=true&output=csv",
+      PC: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQi36jUxlUkQBmzYm7DpFG3HH9GQoiYbGdybwxf8mnYPjY3EDgrNnpCqu4BN9B7censF_2xcpH7WxZq/pub?gid=1936904888&single=true&output=csv",
+      INVA: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQi36jUxlUkQBmzYm7DpFG3HH9GQoiYbGdybwxf8mnYPjY3EDgrNnpCqu4BN9B7censF_2xcpH7WxZq/pub?gid=2094617121&single=true&output=csv"
     };
 
-    const FASES = ["PP","PPR","PC","INVA","PLA"];
-    const MISSOES_POR_FASE = {
-      PP: ["PS-01","PS-02","PS-03","PS-04","PS-05","PS-06","PS-07","PS-08","PS-09","PS-10","PS-11","PS-12","PS-13","PS-14","PS-15","PS-16","PS-17","PS-X1","PS-18","AP-01","AP-02","AP-03","AP-04","AP-05","AP-06","AP-07","AP-08","AP-09","NV-01","NV-02","NV-03","NV-X1","NT-01","NT-02","NT-03","PRCQ","CQPP"],
-      PPR: ["PS-03","PS-05","PS-07","PS-10","PS-15","PS-17","PS-X1","PS-18","AP-01","AP-05","AP-06","AP-07","AP-08","AP-09","NV-01","NV-02","NV-03","NV-X1","NT-01","NT-02","NT-03","PRCQ","CQPP"],
-      PC: ["AD-01","AD-02","AD-03","AD-04","AD-05","AD-06","AD-07","AD-08","AP-01","AP-02","AP-03","AP-04","AP-05","AP-06","AP-07","AP-08","MB-01","MB-02","MB-03","MB-04","MB-05","MB-06","NV-01","NV-02","NV-03","NV-04","NV-05","NV-06","NV-07","NV-08","NV-09","NV-10","NV-11","NV-12","NV-13","NV-14","NV-15","NT-01","NT-02","NT-03","NT-04","NT-05","PRCQ","CQPP"],
-      INVA: ["PI-01","PI-02","PI-03","PI-04","PI-05","PI-06","PI-07","PI-08","PI-09","PI-10","PI-11","PI-12","PI-13","PI-14","PI-15","PI-16","NV-01","NV-02","PRCQ","CQPP"],
-      PLA: []
+    // ==========================
+    // DADOS (carregados dinamicamente das planilhas)
+    // ==========================
+    const MISSOES = { PP:{}, PC:{}, INVA:{} };
+    const FASES = ["PP","PPR","PC","INVA","PLA"]; // PPR/PLA seguem fixos
+    const MISSOES_POR_FASE = { PP:[], PPR:[], PC:[], INVA:[], PLA:[] };
+
+    // Mapeamento de colunas tolerante a variações de nomes/casos/acentos
+    const COLMAP = {
+      code: ["codigo","código","missao","missão","cod","code"],
+      tempo: ["tempo","tempo_voo","tempodevoo"],
+      pousos: ["pousos","pouso"],
+      conteudo: ["conteudo","conteúdo","manobras","conteudo/manobras"],
+      prereq: ["pre-requisitos","pré-requisitos","prerequisitos","prereq","pre_req"],
+      registro: ["registro","reg"],
+      competencias: ["competencias","competências","competencia","competência"]
     };
-    const AERONAVES = ["PR-FLE","PR-FLD","PR-FLN","PT-MJF","PR-MGX","PR-FLM"];
-    const TIPOS_VOO = ["Local","Navegação"];
 
     // ==========================
     // STATE
     // ==========================
     const state = {
+      dadosCarregados: { PP:false, PC:false, INVA:false },
+      erroCarregamento: null,
       aba: "Inicial",
       form: { nomeAluno:"", canacAluno:"", dataVoo:"", fase:"PP", missoes:[""] },
       voo: { tipoVoo:"Local", aeronave:"", local:{}, navegacao:{} },
@@ -77,6 +67,122 @@
       checkoutTexto: "",
       _checkoutInit: false
     };
+
+    // ==========================
+    // CSV helpers (parser simples com suporte a aspas)
+    // ==========================
+    function normalizeHeader(s){
+      return String(s||"")
+        .toLowerCase()
+        .normalize('NFD').replace(/\p{Diacritic}/gu,'')
+        .replace(/[^a-z0-9]/g,'');
+    }
+    function csvParse(text){
+      const rows = [];
+      let i=0, field='', row=[], inQuotes=false;
+      while(i < text.length){
+        const c = text[i];
+        if (inQuotes){
+          if (c==='"' && text[i+1]==='"'){ field+='"'; i+=2; continue; }
+          if (c==='"'){ inQuotes=false; i++; continue; }
+          field += c; i++; continue;
+        } else {
+          if (c==='"'){ inQuotes=true; i++; continue; }
+          if (c===','){ row.push(field); field=''; i++; continue; }
+          if (c==='\n'){ row.push(field); rows.push(row); row=[]; field=''; i++; continue; }
+          if (c==='\r'){ i++; continue; }
+          field += c; i++; continue;
+        }
+      }
+      // último campo
+      row.push(field); rows.push(row);
+      return rows;
+    }
+    function csvToObjects(text){
+      const rows = csvParse(text).filter(r=> r.length && r.some(x=>String(x).trim()!==''));
+      if (!rows.length) return [];
+      const headers = rows[0].map(normalizeHeader);
+      return rows.slice(1).map(r=>{
+        const o={};
+        headers.forEach((h,idx)=> o[h] = r[idx]??'');
+        return o;
+      });
+    }
+    function pick(obj, keys){ const out={}; keys.forEach(k=> out[k]=obj[k]); return out; }
+    function firstMatchKey(obj, names){
+      for (const k of Object.keys(obj)){
+        const nk = normalizeHeader(k);
+        if (names.includes(nk)) return k;
+      }
+      return null;
+    }
+    function parseMissionsCSV(text){
+      // gera mapping flexível a partir do cabeçalho original
+      const rowsRaw = csvParse(text);
+      if (!rowsRaw.length) return { list:[], map:{} };
+      const headerRow = rowsRaw[0];
+      const headerNorm = headerRow.map(h=>normalizeHeader(h));
+      const findCol = (arr)=>{
+        for (let i=0;i<headerNorm.length;i++) if (arr.includes(headerNorm[i])) return i;
+        return -1;
+      };
+      const idx = {
+        code: findCol(COLMAP.code),
+        tempo: findCol(COLMAP.tempo),
+        pousos: findCol(COLMAP.pousos),
+        conteudo: findCol(COLMAP.conteudo),
+        prereq: findCol(COLMAP.prereq),
+        registro: findCol(COLMAP.registro),
+        competencias: findCol(COLMAP.competencias)
+      };
+      const list=[], map={};
+      for (let r=1;r<rowsRaw.length;r++){
+        const row = rowsRaw[r];
+        const code = (idx.code>=0? row[idx.code]: '').trim();
+        if (!code) continue;
+        const tempo_voo = (idx.tempo>=0? row[idx.tempo]: '').trim();
+        const pousos = (idx.pousos>=0? row[idx.pousos]: '').trim();
+        const conteudo = (idx.conteudo>=0? row[idx.conteudo]: '').trim();
+        const prereq = (idx.prereq>=0? row[idx.prereq]: '').trim();
+        const registro = (idx.registro>=0? row[idx.registro]: '').trim();
+        const competencias = (idx.competencias>=0? row[idx.competencias]: '').trim();
+
+        list.push(code);
+        map[code] = {
+          tempo_voo: tempo_voo || "-",
+          pousos: pousos? Number(pousos.replace(/[^0-9]/g,'')) : undefined,
+          conteudo: conteudo ? [conteudo] : [],
+          pre_requisitos: prereq ? prereq.split(/;|,|\n/).map(s=>s.trim()).filter(Boolean) : [],
+          registro: registro || "",
+          competencias: competencias ? competencias.split(/;|,|\n/).map(s=>s.trim()).filter(Boolean) : []
+        };
+      }
+      return { list, map };
+    }
+
+    async function loadCSV(url){
+      const res = await fetch(url, { cache:'no-store' });
+      if (!res.ok) throw new Error(`Falha ao carregar: ${res.status}`);
+      return await res.text();
+    }
+    async function loadAllDatasets(){
+      try{
+        // Carrega e converte PP / PC / INVA
+        for (const fase of ["PP","PC","INVA"]){
+          const text = await loadCSV(CSV_URLS[fase]);
+          const { list, map } = parseMissionsCSV(text);
+          MISSOES[fase] = map;
+          MISSOES_POR_FASE[fase] = list.length ? list : MISSOES_POR_FASE[fase];
+          state.dadosCarregados[fase] = true;
+        }
+        // Mantém listas para PPR/PLA como estavam (se desejar podemos derivar a partir de PP mais tarde)
+        render();
+      }catch(err){
+        console.error(err);
+        state.erroCarregamento = String(err.message||err);
+        render();
+      }
+    }
 
     // ==========================
     // HORA ZULU helpers
@@ -171,18 +277,6 @@
       const arr = Array.isArray(raw) ? raw : [String(raw||"")];
       return arr.flatMap(s=> String(s).split(";")).map(x=>x.trim()).filter(Boolean);
     }
-    function formatMissoesForText(dataset, codes){
-      const blocks = [];
-      (codes||[]).forEach(code=>{
-        const d = dataset?.[code];
-        blocks.push(`Missão ${code}`);
-        const itens = d ? semicolonSplitToItems(d.conteudo) : [];
-        itens.forEach((item, idx)=> blocks.push(`- ${item}${idx < itens.length-1 ? ';' : ''}`));
-        if (!itens.length) blocks.push('- (sem itens)');
-        blocks.push('');
-      });
-      return blocks.join('\n');
-    }
     function datasetByFase(fase){
       if (fase==="PC") return MISSOES.PC;
       if (fase==="INVA") return MISSOES.INVA;
@@ -209,7 +303,6 @@
         return { totalHHMM: minutesToHHMM(minsTotal), totalDecimal: minutesToDecimalTenthsStr(minsTotal), vooHHMM:null, vooDecimal:null, pernas };
       }
     }
-
     function formatInfoVooForText(){
       const r = pageInfoResultados();
       const tipo = state.voo.tipoVoo || 'Local';
@@ -252,14 +345,25 @@
       const todayISO = new Date().toISOString().slice(0,10);
       if (!state.form.dataVoo) state.form.dataVoo = todayISO;
 
+      // monta a lista de missões com base na fase atual; se vazio, usa placeholder
+      const lista = MISSOES_POR_FASE[state.form.fase||"PP"];
       const missoes = (state.form.missoes||[]).map((m,idx)=>`
         <div class="p-3 rounded-2xl border shadow-sm bg-white flex items-center gap-3">
-          ${Select(["",...MISSOES_POR_FASE[state.form.fase||"PP"]], m, `data-ev="missao" data-idx="${idx}"`)}
+          ${Select(["",...(lista?.length? lista: [""])], m, `data-ev="missao" data-idx="${idx}"`)}
           <button class="ml-auto text-sm text-red-600" data-ev="remove-missao" data-idx="${idx}">Remover</button>
         </div>`).join("");
 
+      // status de carregamento
+      const flags = state.dadosCarregados;
+      const status = !flags.PP && !flags.PC && !flags.INVA ?
+        '<div class="text-xs text-gray-500">Carregando planilhas…</div>' :
+        `<div class="text-xs ${flags.PP&&flags.PC&&flags.INVA?'text-green-600':'text-amber-600'}">Planilhas: PP ${flags.PP?'ok':'…'} • PC ${flags.PC?'ok':'…'} • INVA ${flags.INVA?'ok':'…'}</div>`;
+
+      const err = state.erroCarregamento ? `<div class="text-xs text-red-600">${state.erroCarregamento}</div>` : '';
+
       return `
         <div class="p-4 flex flex-col gap-4">
+          ${status}${err}
           <div class="grid grid-cols-1 gap-4">
             ${Field("Nome do Aluno", Input(state.form.nomeAluno, `data-ev="nomeAluno" placeholder="Digite o nome"`))}
             ${Field("CANAC do Aluno", Input(state.form.canacAluno, `data-ev="canacAluno" placeholder="Ex.: 123456"`))}
@@ -345,12 +449,18 @@
     function PageFichaTecnica(){
       const ds = datasetByFase(state.form.fase);
       const cods = (state.form.missoes||[]).filter(Boolean);
+      const carregando = (state.form.fase==='PP' && !state.dadosCarregados.PP) || (state.form.fase==='PC' && !state.dadosCarregados.PC) || (state.form.fase==='INVA' && !state.dadosCarregados.INVA);
+
+      if (carregando){
+        return `<div class="p-4 text-sm text-gray-500">Carregando dados da planilha…</div>`;
+      }
+
       const infos = cods.map(code=>({ code, data: ds?.[code] }));
 
       const itens = infos.map(m=>`
         <div class="p-4 rounded-2xl border bg-white shadow-sm">
           <div class="text-lg font-semibold mb-2">Missão: ${m.code}</div>
-          ${!m.data ? `<div class="text-sm text-red-600">Não encontrado na base de dados embutida.</div>` : `
+          ${!m.data ? `<div class="text-sm text-red-600">Não encontrado na planilha.</div>` : `
             <div class="flex flex-col gap-2 text-sm">
               <div><b>Tempo de Voo:</b> ${m.data.tempo_voo||"-"}</div>
               <div><b>Pousos:</b> ${m.data.pousos ?? "-"}</div>
@@ -370,7 +480,6 @@
 
       return `
         <div class="p-4 flex flex-col gap-4">
-          <!-- compartilhamento removido desta página -->
           ${infos.length===0 ? `<div class="text-sm text-gray-500">Selecione ao menos uma missão na página inicial.</div>` : ""}
           ${itens}
         </div>`;
@@ -452,7 +561,7 @@
       const aer = document.querySelector('[data-ev="aeronave"]'); if (aer) aer.onchange = (e)=> state.voo.aeronave = e.target.value;
       const tipo = document.querySelector('[data-ev="tipoVoo"]'); if (tipo) tipo.onchange = (e)=> { state.voo.tipoVoo = e.target.value; render(); };
 
-      // TimeFields — agora com re-render para atualizar somatórios em tempo real
+      // TimeFields — re-render para atualizar somatórios
       bindTimeField("l-acion", v=> { state.voo.local={...(state.voo.local||{}), acionamento:v}; render(); });
       bindTimeField("l-decol", v=> { state.voo.local={...(state.voo.local||{}), decolagem:v}; render(); });
       bindTimeField("l-pouso", v=> { state.voo.local={...(state.voo.local||{}), pouso:v}; render(); });
@@ -513,14 +622,16 @@
     document.getElementById("year").textContent = new Date().getFullYear();
     setInterval(tick, 1000);
     render();
+    loadAllDatasets();
 
-    // Testes rápidos (console)
+    // Testes rápidos (console) — não alterar os existentes
     console.assert(diffHMtoMinutes('10:00','11:30')===90, '10:00-11:30=90');
     console.assert(minutesToHHMM(110)==='01:50', '110->01:50');
     console.assert(minutesToDecimalTenthsStr(110)==='1,8','110->1,8h');
     console.assert(minutesToDecimalTenthsStr(63)==='1,0','63->1,0h (trunc)');
     console.assert(addMinutesZulu('23:50',20)==='00:10','rollover ok');
-    // ---- Testes adicionais ----
+
+    // Testes adicionais (CSV/rollover)
     console.assert(diffHMtoMinutes('23:50','00:10')===20, 'overnight 23:50-00:10=20');
     console.assert(diffHMtoMinutes('00:00','00:00')===0, '00:00-00:00=0');
     console.assert(minutesToHHMM(0)==='00:00','0->00:00');

@@ -3,51 +3,32 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Instrução de Voo – Floripa</title>
-  <style>
-    :root { color-scheme: light; }
-    * { box-sizing: border-box; }
-    html, body { height: 100%; margin: 0; }
-    body { background: #f3f4f6; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
-    .container { max-width: 420px; margin: 0 auto; }
-    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
-    .pad { padding: 12px; } .pad-lg { padding: 16px; }
-    .row { display: flex; gap: 8px; align-items: center; }
-    .col { display: flex; flex-direction: column; gap: 8px; }
-    .gap-12 { gap: 12px; } .gap-16 { gap: 16px; }
-    .btn { padding: 8px 12px; border-radius: 12px; border: 1px solid #e5e7eb; background: #fff; font-size: 12px; cursor: pointer; }
-    .btn-primary { background: #111; color: #fff; border-color: #111; }
-    .btn-danger { color: #b91c1c; border-color: #fecaca; }
-    .input, select, textarea { width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fff; }
-    label { font-size: 13px; color: #374151; }
-    .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-    .tab { padding: 8px 0; border-radius: 12px; background: #e5e7eb; border: 0; cursor: pointer; }
-    .tab.active { background: #111; color: #fff; }
-    .footer { color: #9ca3af; font-size: 12px; text-align: center; padding: 24px 0; }
-    .zulu { position: sticky; bottom: 12px; background: #111; color: #fff; text-align: center; padding: 10px 12px; border-radius: 12px; font-size: 18px; }
-    ul { margin: 4px 0 0 16px; padding: 0; } li { list-style: none; }
-  </style>
+  <title>Instrução de Voo — Floripa</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="color-scheme" content="light" />
 </head>
-<body>
-  <div class="container">
-    <header class="pad" style="position:sticky;top:0;background:#fff;backdrop-filter:blur(4px);border-bottom:1px solid #e5e7eb;z-index:10">
-      <div class="pad row" style="justify-content:space-between">
-        <div style="font-weight:600">InstrucaoaovoeFloripa</div>
-        <div style="font-size:12px;color:#6b7280">Protótipo</div>
+<body class="min-h-screen bg-gray-100">
+  <div class="max-w-md mx-auto">
+    <!-- Header / Tabs -->
+    <header class="sticky top-0 z-10 bg-white/80 backdrop-blur border-b">
+      <div class="px-4 py-3 flex items-center justify-between">
+        <div class="text-lg font-semibold">InstrucaoaovoeFloripa</div>
+        <div class="text-xs text-gray-500">Protótipo</div>
       </div>
-      <nav class="pad" style="padding-top:0">
-        <div id="tabs" class="tabs"></div>
-      </nav>
+      <nav class="px-2 pb-2 grid grid-cols-4 gap-2" id="tabs"></nav>
     </header>
 
-    <main id="app" class="pad"></main>
+    <!-- App -->
+    <main id="app" class="pb-6"></main>
 
-    <footer class="footer">© <span id="year"></span> — Protótipo para instrutores de voo</footer>
+    <footer class="px-4 py-6 text-center text-xs text-gray-400">
+      © <span id="year"></span> — Protótipo para instrutores de voo
+    </footer>
   </div>
 
   <script>
     // ==========================
-    // DADOS (parcial — amplie quando quiser)
+    // DADOS (amplie quando quiser)
     // ==========================
     const MISSOES = {
       PP: {
@@ -64,9 +45,7 @@
         "PS-02": {
           tempo_voo: "01:00:00",
           pousos: 1,
-          conteudo: [
-            "Coordenação de comandos; Curvas de Média inclinação; Perda de Sustentação"
-          ],
+          conteudo: ["Coordenação de comandos; Curvas de Média inclinação; Perda de Sustentação"],
           pre_requisitos: ["PS-01"],
           registro: "DC",
           competencias: ["CMT", "KNO", "COM"]
@@ -76,40 +55,14 @@
       INVA: {}
     };
 
-    const FASES = ["PP", "PPR", "PC", "INVA", "PLA"];
+    const FASES = ["PP","PPR","PC","INVA","PLA"];
     const MISSOES_POR_FASE = {
-      PP: [
-        "PS-01","PS-02","PS-03","PS-04","PS-05","PS-06","PS-07","PS-08","PS-09","PS-10",
-        "PS-11","PS-12","PS-13","PS-14","PS-15","PS-16","PS-17","PS-X1","PS-18",
-        "AP-01","AP-02","AP-03","AP-04","AP-05","AP-06","AP-07","AP-08","AP-09",
-        "NV-01","NV-02","NV-03","NV-X1",
-        "NT-01","NT-02","NT-03",
-        "PRCQ","CQPP"
-      ],
-      PPR: [
-        "PS-03","PS-05","PS-07","PS-10","PS-15","PS-17","PS-X1","PS-18",
-        "AP-01","AP-05","AP-06","AP-07","AP-08","AP-09",
-        "NV-01","NV-02","NV-03","NV-X1",
-        "NT-01","NT-02","NT-03",
-        "PRCQ","CQPP"
-      ],
-      PC: [
-        "AD-01","AD-02","AD-03","AD-04","AD-05","AD-06","AD-07","AD-08",
-        "AP-01","AP-02","AP-03","AP-04","AP-05","AP-06","AP-07","AP-08",
-        "MB-01","MB-02","MB-03","MB-04","MB-05","MB-06",
-        "NV-01","NV-02","NV-03","NV-04","NV-05","NV-06","NV-07","NV-08",
-        "NV-09","NV-10","NV-11","NV-12","NV-13","NV-14","NV-15",
-        "NT-01","NT-02","NT-03","NT-04","NT-05",
-        "PRCQ","CQPP"
-      ],
-      INVA: [
-        "PI-01","PI-02","PI-03","PI-04","PI-05","PI-06","PI-07","PI-08",
-        "PI-09","PI-10","PI-11","PI-12","PI-13","PI-14","PI-15","PI-16",
-        "NV-01","NV-02","PRCQ","CQPP"
-      ],
+      PP: ["PS-01","PS-02","PS-03","PS-04","PS-05","PS-06","PS-07","PS-08","PS-09","PS-10","PS-11","PS-12","PS-13","PS-14","PS-15","PS-16","PS-17","PS-X1","PS-18","AP-01","AP-02","AP-03","AP-04","AP-05","AP-06","AP-07","AP-08","AP-09","NV-01","NV-02","NV-03","NV-X1","NT-01","NT-02","NT-03","PRCQ","CQPP"],
+      PPR: ["PS-03","PS-05","PS-07","PS-10","PS-15","PS-17","PS-X1","PS-18","AP-01","AP-05","AP-06","AP-07","AP-08","AP-09","NV-01","NV-02","NV-03","NV-X1","NT-01","NT-02","NT-03","PRCQ","CQPP"],
+      PC: ["AD-01","AD-02","AD-03","AD-04","AD-05","AD-06","AD-07","AD-08","AP-01","AP-02","AP-03","AP-04","AP-05","AP-06","AP-07","AP-08","MB-01","MB-02","MB-03","MB-04","MB-05","MB-06","NV-01","NV-02","NV-03","NV-04","NV-05","NV-06","NV-07","NV-08","NV-09","NV-10","NV-11","NV-12","NV-13","NV-14","NV-15","NT-01","NT-02","NT-03","NT-04","NT-05","PRCQ","CQPP"],
+      INVA: ["PI-01","PI-02","PI-03","PI-04","PI-05","PI-06","PI-07","PI-08","PI-09","PI-10","PI-11","PI-12","PI-13","PI-14","PI-15","PI-16","NV-01","NV-02","PRCQ","CQPP"],
       PLA: []
     };
-
     const AERONAVES = ["PR-FLE","PR-FLD","PR-FLN","PT-MJF","PR-MGX","PR-FLM"];
     const TIPOS_VOO = ["Local","Navegação"];
 
@@ -120,7 +73,9 @@
       aba: "Inicial",
       form: { nomeAluno:"", canacAluno:"", dataVoo:"", fase:"PP", missoes:[""] },
       voo: { tipoVoo:"Local", aeronave:"", local:{}, navegacao:{} },
-      clockZulu: "--:--"
+      clockZulu: "--:--",
+      checkoutTexto: "",
+      _checkoutInit: false
     };
 
     // ==========================
@@ -128,15 +83,15 @@
     // ==========================
     const pad2 = (n)=> String(n).padStart(2,"0");
     const dateToZuluHM = (d)=> `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
-    const addMinutesZulu = (baseHM, minutes) => {
+    const addMinutesZulu = (baseHM, minutes)=>{
       const [h,m] = baseHM.split(":").map(Number);
       const base = new Date(); base.setUTCHours(h, m, 0, 0);
       const nd = new Date(base.getTime() + minutes*60*1000);
       return dateToZuluHM(nd);
     };
-    const diffHMtoMinutes = (startHM, endHM) => {
-      const [sh, sm] = startHM.split(":").map(Number);
-      const [eh, em] = endHM.split(":").map(Number);
+    const diffHMtoMinutes = (startHM, endHM)=>{
+      const [sh,sm] = startHM.split(":").map(Number);
+      const [eh,em] = endHM.split(":").map(Number);
       let start = sh*60 + sm; let end = eh*60 + em; if (end < start) end += 24*60;
       return end - start;
     };
@@ -144,65 +99,71 @@
     const minutesToDecimalTenths = (mins)=> (Math.floor(mins/6)/10).toFixed(1);
 
     // ==========================
-    // WHATSAPP
+    // WhatsApp
     // ==========================
     async function shareWhatsApp(text, numero){
       try {
-        if (navigator.share && (!navigator.canShare || navigator.canShare({text}))){
+        if (navigator.share && (!navigator.canShare || navigator.canShare({ text }))){
           await navigator.share({ text });
           return;
         }
       } catch {}
       const base = numero ? `https://wa.me/${numero}?text=` : `https://api.whatsapp.com/send?text=`;
-      const url = base + encodeURIComponent(text);
-      window.open(url, "_blank");
+      window.open(base + encodeURIComponent(text), "_blank");
     }
 
     // ==========================
-    // RENDER helpers
+    // Helpers UI
     // ==========================
-    function Field(label, innerHTML){
-      return `<div class="col"><label>${label}</label>${innerHTML}</div>`;
+    function Field(label, inner){
+      return `
+        <div class="flex flex-col gap-1">
+          <label class="text-sm text-gray-700">${label}</label>
+          ${inner}
+        </div>`;
     }
     function Select(options, value, attrs=""){
-      const opts = options.map(o=>`<option value="${o}">${o}</option>`).join("");
-      return `<select ${attrs}>${opts}</select>`;
+      const opts = options.map(o=>`<option value="${o}" ${o===value?'selected':''}>${o}</option>`).join("");
+      return `<select ${attrs} class="w-full border rounded-xl p-3 pr-8 bg-white">${opts}</select>`;
+    }
+    function Input(value, attrs=""){
+      return `<input ${attrs} class="w-full border rounded-xl p-3 bg-white" value="${value||""}" />`;
+    }
+    function TextArea(value, attrs=""){
+      return `<textarea ${attrs} class="w-full min-h-[240px] border rounded-2xl p-3 bg-white">${value||""}</textarea>`;
     }
     function TimeField(id, label, value){
-      const [hh="00", mm="00"] = (String(value||"00:00").split(":").map(x=>pad2(+x||0)));
-      const HOURS = Array.from({length:24}, (_,i)=>pad2(i)).map(h=>`<option value="${h}">${h}</option>`).join("");
-      const MINUTES = Array.from({length:60}, (_,i)=>pad2(i)).map(m=>`<option value="${m}">${m}</option>`).join("");
-      return `
-        <div class="col">
-          <label>${label}</label>
-          <div class="row">
-            <select data-id="${id}" data-part="hh">${HOURS}</select>
-            <span>:</span>
-            <select data-id="${id}" data-part="mm">${MINUTES}</select>
-            <button class="btn" data-id="${id}" data-action="nowz">Agora (Z)</button>
+      const [hh="00", mm="00"] = String(value||"00:00").split(":").map(x=>pad2(+x||0));
+      const HOURS = Array.from({length:24}, (_,i)=>pad2(i)).map(h=>`<option value="${h}" ${h===hh?'selected':''}>${h}</option>`).join("");
+      const MINUTES = Array.from({length:60}, (_,i)=>pad2(i)).map(m=>`<option value="${m}" ${m===mm?'selected':''}>${m}</option>`).join("");
+      const html = `
+        <div class="flex flex-col gap-1">
+          <label class="text-sm text-gray-700">${label}</label>
+          <div class="flex items-center gap-2">
+            <select data-id="${id}" data-part="hh" class="border rounded-xl p-3">${HOURS}</select>
+            <span class="text-gray-500">:</span>
+            <select data-id="${id}" data-part="mm" class="border rounded-xl p-3">${MINUTES}</select>
+            <button type="button" data-id="${id}" data-action="nowz" class="ml-2 px-3 py-2 rounded-xl border bg-white text-xs">Agora (Z)</button>
           </div>
           <input type="hidden" id="${id}" value="${hh}:${mm}" />
-        </div>
-        <script>
-          (function(){
-            const hh = document.querySelector('select[data-id="${id}"][data-part="hh"]');
-            const mm = document.querySelector('select[data-id="${id}"][data-part="mm"]');
-            const hidden = document.getElementById('${id}');
-            hh.value='${hh}'; mm.value='${mm}';
-            function update(){ hidden.value = \`\${hh.value}:\${mm.value}\`; hidden.dispatchEvent(new Event('change')); }
-            hh.onchange=update; mm.onchange=update;
-            const btn = document.querySelector('button[data-id="${id}"][data-action="nowz"]');
-            btn.onclick = ()=>{ const n = new Date(); hh.value='${'${'}pad2(n.getUTCHours())${'}'}'; mm.value='${'${'}pad2(n.getUTCMinutes())${'}'}'; update(); };
-          })();
-        </script>
-      `;
+        </div>`;
+      return html;
+    }
+    function bindTimeField(id, onChange){
+      const hh = document.querySelector(`select[data-id="${id}"][data-part="hh"]`);
+      const mm = document.querySelector(`select[data-id="${id}"][data-part="mm"]`);
+      const hidden = document.getElementById(id);
+      const btn = document.querySelector(`button[data-id="${id}"][data-action="nowz"]`);
+      function update(){ hidden.value = `${hh.value}:${mm.value}`; hidden.dispatchEvent(new Event("change")); }
+      if (hh) hh.onchange = update;
+      if (mm) mm.onchange = update;
+      if (hidden) hidden.addEventListener("change", ()=> onChange(hidden.value));
+      if (btn) btn.onclick = ()=>{ const n=new Date(); hh.value=pad2(n.getUTCHours()); mm.value=pad2(n.getUTCMinutes()); update(); };
     }
 
     function semicolonSplitToItems(raw){
       const arr = Array.isArray(raw) ? raw : [String(raw||"")];
-      return arr.flatMap(s=> String(s).split(";"))
-                .map(x=>x.trim())
-                .filter(Boolean);
+      return arr.flatMap(s=> String(s).split(";")).map(x=>x.trim()).filter(Boolean);
     }
     function formatMissoesForText(dataset, codes){
       const blocks = [];
@@ -216,52 +177,50 @@
       });
       return blocks.join('\n');
     }
+    function datasetByFase(fase){
+      if (fase==="PC") return MISSOES.PC;
+      if (fase==="INVA") return MISSOES.INVA;
+      if (fase==="PP" || fase==="PPR") return MISSOES.PP;
+      return {};
+    }
 
     // ==========================
-    // PÁGINAS
+    // Páginas
     // ==========================
     function PageInicial(){
       const todayISO = new Date().toISOString().slice(0,10);
       if (!state.form.dataVoo) state.form.dataVoo = todayISO;
 
-      const missoesHTML = state.form.missoes.map((m,idx)=>`
-        <div class="card pad row" style="align-items:center">
-          ${Select(["",...MISSOES_POR_FASE[state.form.fase||"PP"]], m, `data-ev="missao" data-idx="${idx}" class="input"`)}
-          <button class="btn btn-danger" data-ev="remove-missao" data-idx="${idx}">Remover</button>
-        </div>
-      `).join("");
+      const missoes = (state.form.missoes||[]).map((m,idx)=>`
+        <div class="p-3 rounded-2xl border shadow-sm bg-white flex items-center gap-3">
+          ${Select(["",...MISSOES_POR_FASE[state.form.fase||"PP"]], m, `data-ev="missao" data-idx="${idx}"`)}
+          <button class="ml-auto text-sm text-red-600" data-ev="remove-missao" data-idx="${idx}">Remover</button>
+        </div>`).join("");
 
       return `
-        <div class="pad-lg col gap-16">
-          <div class="col gap-12">
-            ${Field("Nome do Aluno", `<input class="input" value="${state.form.nomeAluno||""}" data-ev="nomeAluno" placeholder="Digite o nome" />`)}
-            ${Field("CANAC do Aluno", `<input class="input" value="${state.form.canacAluno||""}" data-ev="canacAluno" placeholder="Ex.: 123456" />`)}
-            ${Field("Data do Voo", `<input type="date" class="input" value="${state.form.dataVoo||todayISO}" data-ev="dataVoo" />`)}
-            ${Field("Fase da Instrução", Select(FASES, state.form.fase||"PP", `data-ev="fase" class="input"`))}
+        <div class="p-4 flex flex-col gap-4">
+          <div class="grid grid-cols-1 gap-4">
+            ${Field("Nome do Aluno", Input(state.form.nomeAluno, `data-ev="nomeAluno" placeholder="Digite o nome"`))}
+            ${Field("CANAC do Aluno", Input(state.form.canacAluno, `data-ev="canacAluno" placeholder="Ex.: 123456"`))}
+            ${Field("Data do Voo", `<input type="date" class="w-full border rounded-xl p-3" value="${state.form.dataVoo||todayISO}" data-ev="dataVoo" />`)}
+            ${Field("Fase da Instrução", Select(FASES, state.form.fase||"PP", `data-ev="fase"`))}
           </div>
 
-          <div class="col gap-12">
-            <div class="row" style="justify-content:space-between">
-              <span style="font-size:13px;color:#374151">Missões</span>
-              <button class="btn btn-primary" data-ev="add-missao">+ Adicionar</button>
+          <div class="mt-2">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sm text-gray-700">Missões</span>
+              <button class="px-3 py-1 rounded-xl bg-black text-white" data-ev="add-missao">+ Adicionar</button>
             </div>
-            <div class="col gap-12">${missoesHTML}</div>
+            <div class="flex flex-col gap-3">${missoes}</div>
           </div>
-        </div>
-      `;
+        </div>`;
     }
 
     function pageInfoResultados(){
-      if ((state.voo.tipoVoo||"Local") === "Local"){
+      if ((state.voo.tipoVoo||"Local")==="Local"){
         const minsTotal = diffHMtoMinutes(state.voo.local?.acionamento||"00:00", state.voo.local?.corte||"00:00");
-        const minsVoo = diffHMtoMinutes(state.voo.local?.decolagem||"00:00", state.voo.local?.pouso||"00:00");
-        return {
-          totalHHMM: minutesToHHMM(minsTotal),
-          totalDecimal: minutesToDecimalTenths(minsTotal),
-          vooHHMM: minutesToHHMM(minsVoo),
-          vooDecimal: minutesToDecimalTenths(minsVoo),
-          pernas:[]
-        };
+        const minsVoo   = diffHMtoMinutes(state.voo.local?.decolagem  ||"00:00", state.voo.local?.pouso  ||"00:00");
+        return { totalHHMM: minutesToHHMM(minsTotal), totalDecimal: minutesToDecimalTenths(minsTotal), vooHHMM: minutesToHHMM(minsVoo), vooDecimal: minutesToDecimalTenths(minsVoo), pernas:[] };
       } else {
         const acion = state.voo.navegacao?.acionamento || "00:00";
         const corte = state.voo.navegacao?.corte || "00:00";
@@ -270,147 +229,122 @@
           const mm = diffHMtoMinutes(p.decolagem||"00:00", p.pouso||"00:00");
           return { ...p, hhmm: minutesToHHMM(mm), dec: minutesToDecimalTenths(mm) };
         });
-        return {
-          totalHHMM: minutesToHHMM(minsTotal),
-          totalDecimal: minutesToDecimalTenths(minsTotal),
-          vooHHMM:null,
-          vooDecimal:null,
-          pernas
-        };
+        return { totalHHMM: minutesToHHMM(minsTotal), totalDecimal: minutesToDecimalTenths(minsTotal), vooHHMM:null, vooDecimal:null, pernas };
       }
     }
 
     function PageInfoVoo(){
-      // Pré-preencher se vazio
       const nowHM = dateToZuluHM(new Date());
-      if (!state.voo.local?.acionamento && state.voo.tipoVoo !== "Navegação"){
-        const acion = nowHM;
-        const deco = addMinutesZulu(acion, 10);
-        const pouso = addMinutesZulu(acion, 55);
-        const corte = addMinutesZulu(acion, 60);
+      if (!state.voo.local?.acionamento && state.voo.tipoVoo!=="Navegação"){
+        const acion = nowHM, deco = addMinutesZulu(acion,10), pouso = addMinutesZulu(acion,55), corte = addMinutesZulu(acion,60);
         state.voo = {
-          aeronave: state.voo.aeronave || "",
-          tipoVoo: state.voo.tipoVoo || "Local",
+          aeronave: state.voo.aeronave||"",
+          tipoVoo: state.voo.tipoVoo||"Local",
           local: { acionamento: acion, decolagem: deco, pouso, corte },
-          navegacao: state.voo.navegacao || { acionamento: acion, perna: [{ decolagem: deco, pouso: addMinutesZulu(deco,30) }], corte }
+          navegacao: state.voo.navegacao || { acionamento: acion, perna: [{ decolagem: deco, pouso: addMinutesZulu(deco,30)}], corte }
         };
       }
 
-      const selecaoTipo = Select(TIPOS_VOO, state.voo.tipoVoo||"Local", 'data-ev="tipoVoo" class="input"');
-      const selecaoAeronave = Select(["",...AERONAVES], state.voo.aeronave||"", 'data-ev="aeronave" class="input"');
-
       const tipoLocal = `
-        ${TimeField("local-acion", "Acionamento (Zulu)", state.voo.local?.acionamento||"")}
-        ${TimeField("local-decol", "Decolagem (Zulu)", state.voo.local?.decolagem||"")}
-        ${TimeField("local-pouso", "Pouso (Zulu)", state.voo.local?.pouso||"")}
-        ${TimeField("local-corte", "Corte (Zulu)", state.voo.local?.corte||"")}
+        ${TimeField("l-acion","Acionamento (Zulu)", state.voo.local?.acionamento||"")}
+        ${TimeField("l-decol","Decolagem (Zulu)", state.voo.local?.decolagem||"")}
+        ${TimeField("l-pouso","Pouso (Zulu)", state.voo.local?.pouso||"")}
+        ${TimeField("l-corte","Corte (Zulu)", state.voo.local?.corte||"")}
       `;
-
-      const pernasHTML = (state.voo.navegacao?.perna||[]).map((p,idx)=>`
-        <div class="card pad">
-          <div class="row" style="justify-content:space-between">
-            <span style="font-size:13px;font-weight:600">Perna ${idx+1}</span>
-            <button class="btn btn-danger" data-ev="remove-perna" data-idx="${idx}">Remover</button>
+      const pernas = (state.voo.navegacao?.perna||[]).map((p,idx)=>`
+        <div class="p-3 rounded-2xl border bg-white shadow-sm">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium">Perna ${idx+1}</span>
+            <button class="text-xs text-red-600" data-ev="remove-perna" data-idx="${idx}">Remover</button>
           </div>
-          <div class="col gap-12">
-            ${TimeField(`nav-dec-${idx}`,"Decolagem (Zulu)", p.decolagem)}
-            ${TimeField(`nav-pou-${idx}`,"Pouso (Zulu)", p.pouso)}
+          <div class="grid grid-cols-1 gap-3">
+            ${TimeField(`n-dec-${idx}`,"Decolagem (Zulu)", p.decolagem)}
+            ${TimeField(`n-pou-${idx}`,"Pouso (Zulu)", p.pouso)}
           </div>
         </div>
       `).join("");
-
       const tipoNav = `
-        ${TimeField("nav-acion","Acionamento (Zulu)", state.voo.navegacao?.acionamento||"")}
-        ${pernasHTML}
-        <button class="btn btn-primary" data-ev="add-perna">+ Adicionar Decolagem/Pouso</button>
-        ${TimeField("nav-corte","Corte (Zulu)", state.voo.navegacao?.corte||"")}
+        ${TimeField("n-acion","Acionamento (Zulu)", state.voo.navegacao?.acionamento||"")}
+        ${pernas}
+        <button class="w-full rounded-2xl bg-black text-white py-2" data-ev="add-perna">+ Adicionar Decolagem/Pouso</button>
+        ${TimeField("n-corte","Corte (Zulu)", state.voo.navegacao?.corte||"")}
       `;
 
       const r = pageInfoResultados();
 
       return `
-        <div class="pad-lg col gap-16">
-          <div class="col gap-12">
-            ${Field("Aeronave", selecaoAeronave)}
-            ${Field("Tipo de Voo", selecaoTipo)}
+        <div class="p-4 flex flex-col gap-4">
+          <div class="grid grid-cols-1 gap-4">
+            ${Field("Aeronave", Select(["",...AERONAVES], state.voo.aeronave||"", `data-ev="aeronave"`))}
+            ${Field("Tipo de Voo", Select(TIPOS_VOO, state.voo.tipoVoo||"Local", `data-ev="tipoVoo"`))}
           </div>
 
-          ${(state.voo.tipoVoo||"Local")==="Local" ? `<div class="col gap-12">${tipoLocal}</div>` : `<div class="col gap-12">${tipoNav}</div>`}
+          ${(state.voo.tipoVoo||"Local")==="Local" ? `<div class="grid grid-cols-1 gap-3">${tipoLocal}</div>` : `<div class="grid grid-cols-1 gap-3">${tipoNav}</div>`}
 
-          <div class="card pad">
-            <div style="font-size:13px;color:#4b5563;margin-bottom:4px">Somatórios</div>
-            <div style="font-size:14px">Total (Acionamento → Corte): <b>${r.totalHHMM}</b> – <b>${r.totalDecimal} h</b></div>
+          <div class="mt-2 p-3 rounded-2xl bg-gray-50 border">
+            <div class="text-sm text-gray-600 mb-1">Somatórios</div>
+            <div class="text-sm">Total (Acionamento → Corte): <b>${r.totalHHMM}</b> – <b>${r.totalDecimal} h</b></div>
             ${(state.voo.tipoVoo||"Local")==="Local"
-              ? `<div style="font-size:14px">Decolagem → Pouso: <b>${r.vooHHMM}</b> – <b>${r.vooDecimal} h</b></div>`
-              : `<div class="col">${r.pernas.map((p,i)=>`<div style="font-size:14px">Perna ${i+1} (Dec→Pou): <b>${p.hhmm}</b> – <b>${p.dec} h</b></div>`).join("")}</div>`
+              ? `<div class="text-sm">Decolagem → Pouso: <b>${r.vooHHMM}</b> – <b>${r.vooDecimal} h</b></div>`
+              : `<div class="text-sm flex flex-col gap-1">
+                  ${r.pernas.map((p,i)=>`<div>Perna ${i+1} (Dec→Pou): <b>${p.hhmm}</b> – <b>${p.dec} h</b></div>`).join("")}
+                </div>`
             }
           </div>
 
-          <div class="zulu">Horário Zulu: <b id="clockZulu">${state.clockZulu}Z</b></div>
-        </div>
-      `;
-    }
-
-    function datasetByFase(fase){
-      if (fase==="PC") return MISSOES.PC;
-      if (fase==="INVA") return MISSOES.INVA;
-      if (fase==="PP" || fase==="PPR") return MISSOES.PP;
-      return {};
+          <div class="sticky bottom-3 p-4 rounded-2xl bg-black text-white text-center text-xl tracking-wider">
+            Horário Zulu: <b id="clockZulu">${state.clockZulu}Z</b>
+          </div>
+        </div>`;
     }
 
     function PageFichaTecnica(){
       const ds = datasetByFase(state.form.fase);
-      const selecionadas = (state.form.missoes||[]).filter(Boolean);
-      const infos = selecionadas.map(code => ({ code, data: ds?.[code] }));
+      const cods = (state.form.missoes||[]).filter(Boolean);
+      const infos = cods.map(code=>({ code, data: ds?.[code] }));
 
-      const itensHTML = infos.map(m=>`
-        <div class="card pad">
-          <div style="font-size:16px;font-weight:600;margin-bottom:8px">Missão: ${m.code}</div>
-          ${
-            !m.data
-            ? `<div style="color:#b91c1c;font-size:13px">Não encontrado na base de dados embutida.</div>`
-            : `
-              <div class="col">
-                <div><b>Tempo de Voo:</b> ${m.data.tempo_voo||"-"}</div>
-                <div><b>Pousos:</b> ${m.data.pousos ?? "-"}</div>
-                <div><b>Pré-requisitos:</b> ${(m.data.pre_requisitos||[]).join(", ") || "-"}</div>
-                <div><b>Registro:</b> ${m.data.registro||"-"}</div>
-                <div><b>Competências:</b> ${(m.data.competencias||[]).join(", ") || "-"}</div>
-                <div>
-                  <b>Conteúdo / Manobras:</b>
-                  <div style="margin-top:4px">Missão ${m.code}</div>
-                  <ul>
-                    ${
-                      (semicolonSplitToItems(m.data.conteudo)).map((c,i,arr)=> `<li>- ${c}${i < arr.length-1 ? ';' : ''}</li>`).join("")
-                    }
-                  </ul>
-                </div>
+      const itens = infos.map(m=>`
+        <div class="p-4 rounded-2xl border bg-white shadow-sm">
+          <div class="text-lg font-semibold mb-2">Missão: ${m.code}</div>
+          ${!m.data ? `<div class="text-sm text-red-600">Não encontrado na base de dados embutida.</div>` : `
+            <div class="flex flex-col gap-2 text-sm">
+              <div><b>Tempo de Voo:</b> ${m.data.tempo_voo||"-"}</div>
+              <div><b>Pousos:</b> ${m.data.pousos ?? "-"}</div>
+              <div><b>Pré-requisitos:</b> ${(m.data.pre_requisitos||[]).join(", ") || "-"}</div>
+              <div><b>Registro:</b> ${m.data.registro || "-"}</div>
+              <div><b>Competências:</b> ${(m.data.competencias||[]).join(", ") || "-"}</div>
+              <div>
+                <b>Conteúdo / Manobras:</b>
+                <div class="mt-1">Missão ${m.code}</div>
+                <ul class="ml-5">
+                  ${semicolonSplitToItems(m.data.conteudo).map((c,i,arr)=>`<li>- ${c}${i<arr.length-1?';':''}</li>`).join("")}
+                </ul>
               </div>
-            `
-          }
+            </div>`}
         </div>
       `).join("");
 
       return `
-        <div class="pad-lg col gap-16">
-          ${infos.length===0 ? `<div style="color:#6b7280;font-size:13px">Selecione ao menos uma missão na página inicial.</div>` : ""}
-          <button class="btn btn-primary" data-ev="share-ficha">Compartilhar WhatsApp</button>
-          ${itensHTML}
-        </div>
-      `;
+        <div class="p-4 flex flex-col gap-4">
+          ${infos.length===0 ? `<div class="text-sm text-gray-500">Selecione ao menos uma missão na página inicial.</div>` : ""}
+          <div class="flex gap-2">
+            <button class="px-3 py-2 rounded-xl bg-black text-white text-xs" data-ev="share-ficha">Compartilhar WhatsApp</button>
+          </div>
+          ${itens}
+        </div>`;
     }
 
     function PageCheckout(){
       const ds = datasetByFase(state.form.fase);
-      const selecionadas = (state.form.missoes||[]).filter(Boolean);
+      const cods = (state.form.missoes||[]).filter(Boolean);
       if (!state._checkoutInit){
         const linhas=[];
-        selecionadas.forEach(code=>{
+        cods.forEach(code=>{
           const d = ds?.[code];
           linhas.push(`Missão ${code}`);
           if (d && d.conteudo){
             const itens = semicolonSplitToItems(d.conteudo);
-            itens.forEach((it,idx)=> linhas.push(`- ${it}${idx < itens.length-1 ? ';' : ''}`));
+            itens.forEach((it,idx)=> linhas.push(`- ${it}${idx<itens.length-1?';':''}`));
           }
           linhas.push("");
         });
@@ -418,24 +352,23 @@
         state._checkoutInit = true;
       }
       return `
-        <div class="pad-lg col gap-12">
-          <div style="color:#6b7280;font-size:13px">Escreva aqui sua avaliação (livre). O texto vem pré-preenchido com o descritivo da(s) missão(ões), podendo ser editado.</div>
-          <div class="row">
-            <button class="btn btn-primary" data-ev="share-checkout">Compartilhar WhatsApp</button>
+        <div class="p-4 flex flex-col gap-3">
+          <div class="text-sm text-gray-600">Escreva aqui sua avaliação (livre). O texto vem pré-preenchido com o descritivo da(s) missão(ões), podendo ser editado.</div>
+          <div class="flex gap-2 mb-2">
+            <button class="px-3 py-2 rounded-xl bg-black text-white text-xs" data-ev="share-checkout">Compartilhar WhatsApp</button>
           </div>
-          <textarea class="input" style="min-height:240px" data-ev="checkout-texto">${state.checkoutTexto||""}</textarea>
-        </div>
-      `;
+          ${TextArea(state.checkoutTexto, `data-ev="checkout-texto"`) }
+        </div>`;
     }
 
     // ==========================
-    // RENDER raiz
+    // Render raiz + bindings
     // ==========================
     function render(){
       // tabs
       const tabs = ["Inicial","Informações do voo","Ficha Técnica","Check-out"];
       document.getElementById("tabs").innerHTML = tabs.map(t=>`
-        <button class="tab ${state.aba===t?"active":""}" data-aba="${t}">${t}</button>
+        <button data-aba="${t}" class="py-2 rounded-2xl text-sm ${state.aba===t?'bg-black text-white':'bg-gray-200 text-gray-800'}">${t}</button>
       `).join("");
 
       // page
@@ -446,45 +379,35 @@
       : state.aba==="Ficha Técnica" ? PageFichaTecnica()
       : PageCheckout();
 
-      bindEvents();
+      bind();
     }
 
-    // ==========================
-    // Event binding por página
-    // ==========================
-    function bindEvents(){
+    function bind(){
       // tabs
-      document.querySelectorAll('[data-aba]').forEach(el=>{
-        el.onclick = ()=> { state.aba = el.getAttribute('data-aba'); if (state.aba!=="Check-out") state._checkoutInit = false; render(); };
+      document.querySelectorAll('[data-aba]').forEach(b=>{
+        b.onclick = ()=> { state.aba = b.getAttribute('data-aba'); if (state.aba!=="Check-out") state._checkoutInit = false; render(); };
       });
 
-      // INICIAL
-      document.querySelectorAll('[data-ev="nomeAluno"]').forEach(el=> el.oninput = e=> state.form.nomeAluno = e.target.value );
-      document.querySelectorAll('[data-ev="canacAluno"]').forEach(el=> el.oninput = e=> state.form.canacAluno = e.target.value );
-      document.querySelectorAll('[data-ev="dataVoo"]').forEach(el=> el.oninput = e=> state.form.dataVoo = e.target.value );
-      const faseEl = document.querySelector('[data-ev="fase"]'); if (faseEl) faseEl.onchange = e=> { state.form.fase = e.target.value; state.form.missoes = [""]; render(); };
-      document.querySelectorAll('[data-ev="missao"]').forEach(el=> el.onchange = e=>{
-        const idx = +el.getAttribute('data-idx'); state.form.missoes[idx] = e.target.value;
-      });
+      // Inicial
+      const set = (k)=> (e)=> state.form[k] = e.target.value;
+      document.querySelectorAll('[data-ev="nomeAluno"]').forEach(el=> el.oninput = set('nomeAluno'));
+      document.querySelectorAll('[data-ev="canacAluno"]').forEach(el=> el.oninput = set('canacAluno'));
+      document.querySelectorAll('[data-ev="dataVoo"]').forEach(el=> el.oninput = set('dataVoo'));
+      const fase = document.querySelector('[data-ev="fase"]'); if (fase) fase.onchange = (e)=>{ state.form.fase = e.target.value; state.form.missoes=[""]; render(); };
+      document.querySelectorAll('[data-ev="missao"]').forEach(el=> el.onchange = (e)=>{ const idx=+el.getAttribute('data-idx'); state.form.missoes[idx]=e.target.value; });
       const addM = document.querySelector('[data-ev="add-missao"]'); if (addM) addM.onclick = ()=> { state.form.missoes.push(""); render(); };
-      document.querySelectorAll('[data-ev="remove-missao"]').forEach(el=> el.onclick = ()=>{
-        const idx = +el.getAttribute('data-idx'); state.form.missoes = state.form.missoes.filter((_,i)=> i!==idx); render();
-      });
+      document.querySelectorAll('[data-ev="remove-missao"]').forEach(el=> el.onclick = ()=>{ const idx=+el.getAttribute('data-idx'); state.form.missoes = state.form.missoes.filter((_,i)=>i!==idx); render(); });
 
-      // INFO VOO
-      const aer = document.querySelector('[data-ev="aeronave"]'); if (aer) aer.onchange = e=> state.voo.aeronave = e.target.value;
-      const tipo = document.querySelector('[data-ev="tipoVoo"]'); if (tipo) tipo.onchange = e=> { state.voo.tipoVoo = e.target.value; render(); };
-
-      // TimeField Local
-      bindHM("local-acion", (val)=> { state.voo.local = {...state.voo.local, acionamento:val}; });
-      bindHM("local-decol", (val)=> { state.voo.local = {...state.voo.local, decolagem:val}; });
-      bindHM("local-pouso", (val)=> { state.voo.local = {...state.voo.local, pouso:val}; });
-      bindHM("local-corte", (val)=> { state.voo.local = {...state.voo.local, corte:val}; });
-
-      // TimeField Navegação
-      bindHM("nav-acion",(val)=> { state.voo.navegacao = {...state.voo.navegacao, acionamento:val}; });
-      bindHM("nav-corte",(val)=> { state.voo.navegacao = {...state.voo.navegacao, corte:val}; });
-
+      // Info voo
+      const aer = document.querySelector('[data-ev="aeronave"]'); if (aer) aer.onchange = (e)=> state.voo.aeronave = e.target.value;
+      const tipo = document.querySelector('[data-ev="tipoVoo"]'); if (tipo) tipo.onchange = (e)=> { state.voo.tipoVoo = e.target.value; render(); };
+      // TimeFields
+      bindTimeField("l-acion", v=> state.voo.local={...(state.voo.local||{}), acionamento:v});
+      bindTimeField("l-decol", v=> state.voo.local={...(state.voo.local||{}), decolagem:v});
+      bindTimeField("l-pouso", v=> state.voo.local={...(state.voo.local||{}), pouso:v});
+      bindTimeField("l-corte", v=> state.voo.local={...(state.voo.local||{}), corte:v});
+      bindTimeField("n-acion", v=> state.voo.navegacao={...(state.voo.navegacao||{}), acionamento:v});
+      bindTimeField("n-corte", v=> state.voo.navegacao={...(state.voo.navegacao||{}), corte:v});
       // pernas
       const addP = document.querySelector('[data-ev="add-perna"]'); if (addP) addP.onclick = ()=>{
         const per = state.voo.navegacao?.perna || [];
@@ -501,32 +424,24 @@
         state.voo.navegacao = { ...(state.voo.navegacao||{}), perna: per };
         render();
       });
-      // binds HM para cada perna
       (state.voo.navegacao?.perna||[]).forEach((p,idx)=>{
-        bindHM(`nav-dec-${idx}`, (val)=>{ const per=[...(state.voo.navegacao?.perna||[])]; per[idx]={...per[idx], decolagem:val}; state.voo.navegacao={...(state.voo.navegacao||{}), perna:per}; });
-        bindHM(`nav-pou-${idx}`, (val)=>{ const per=[...(state.voo.navegacao?.perna||[])]; per[idx]={...per[idx], pouso:val}; state.voo.navegacao={...(state.voo.navegacao||{}), perna:per}; });
+        bindTimeField(`n-dec-${idx}`, v=>{ const per=[...(state.voo.navegacao?.perna||[])]; per[idx]={...per[idx], decolagem:v}; state.voo.navegacao={...(state.voo.navegacao||{}), perna:per}; });
+        bindTimeField(`n-pou-${idx}`, v=>{ const per=[...(state.voo.navegacao?.perna||[])]; per[idx]={...per[idx], pouso:v}; state.voo.navegacao={...(state.voo.navegacao||{}), perna:per}; });
       });
 
-      // FICHA TÉCNICA
-      const btnShareF = document.querySelector('[data-ev="share-ficha"]');
-      if (btnShareF) btnShareF.onclick = ()=>{
+      // Ficha técnica share
+      const shareF = document.querySelector('[data-ev="share-ficha"]');
+      if (shareF) shareF.onclick = ()=>{
         const ds = datasetByFase(state.form.fase);
-        const codes = (state.form.missoes||[]).filter(Boolean);
-        const text = formatMissoesForText(ds, codes);
+        const text = formatMissoesForText(ds, (state.form.missoes||[]).filter(Boolean));
         shareWhatsApp(text);
       };
 
-      // CHECK-OUT
+      // Checkout
       const area = document.querySelector('[data-ev="checkout-texto"]');
-      if (area) area.oninput = e=> state.checkoutTexto = e.target.value;
-      const btnShareC = document.querySelector('[data-ev="share-checkout"]');
-      if (btnShareC) btnShareC.onclick = ()=> shareWhatsApp(state.checkoutTexto || "");
-    }
-
-    function bindHM(id, setter){
-      const hidden = document.getElementById(id);
-      if (!hidden) return;
-      hidden.addEventListener('change', ()=> setter(hidden.value));
+      if (area) area.oninput = (e)=> state.checkoutTexto = e.target.value;
+      const shareC = document.querySelector('[data-ev="share-checkout"]');
+      if (shareC) shareC.onclick = ()=> shareWhatsApp(state.checkoutTexto||"");
     }
 
     // ==========================
@@ -539,13 +454,13 @@
     }
 
     // ==========================
-    // Inicialização
+    // Init
     // ==========================
     document.getElementById("year").textContent = new Date().getFullYear();
     setInterval(tick, 1000);
     render();
 
-    // Testes rápidos no console
+    // Testes rápidos (console)
     console.assert(diffHMtoMinutes('10:00','11:30')===90, '10:00-11:30=90');
     console.assert(minutesToHHMM(110)==='01:50', '110->01:50');
     console.assert(minutesToDecimalTenths(110)==='1.8','110->1.8h');

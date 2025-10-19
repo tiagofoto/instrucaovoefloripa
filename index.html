@@ -1,0 +1,85 @@
+<!doctype html>
+</div>
+);
+};
+
+
+const PaginaCheckout = ({ fase, missoesSelecionadas, form }) => {
+const dataset = useMemo(()=>{ if (fase==='PC') return MISSOES.PC; if (fase==='INVA') return MISSOES.INVA; if (fase==='PP' || fase==='PPR') return MISSOES.PP; return {}; },[fase]);
+const [texto, setTexto] = useState("");
+useEffect(()=>{
+const linhas=[]; (missoesSelecionadas||[]).forEach(code=>{ const d=dataset?.[code]; linhas.push(`Missão ${code}`); if(d && d.conteudo){ const itens=String(d.conteudo).split(';').map(x=>x.trim()).filter(Boolean); itens.forEach((it,idx)=>linhas.push(`- ${it}${idx<itens.length-1?';':''}`)); } linhas.push(''); }); if(linhas.length) setTexto(linhas.join('\n'));
+},[fase, JSON.stringify(missoesSelecionadas)]);
+return (
+<div className="pad-lg col gap-12">
+<div style="color:#6b7280;font-size:13px">Escreva aqui sua avaliação (livre). O texto vem pré-preenchido com o descritivo da(s) missão(ões), podendo ser editado.</div>
+<div className="row">
+<button className="btn btn-primary" onClick={()=> shareWhatsApp(texto)}>Compartilhar WhatsApp</button>
+</div>
+<textarea className="input" style="min-height: 240px" value={texto} onChange={e=>setTexto(e.target.value)} />
+</div>
+);
+};
+
+
+// ==========================
+// App
+// ==========================
+const App = () => {
+const [aba, setAba] = useState('Inicial');
+const [form, setForm] = useState({ nomeAluno:'', canacAluno:'', dataVoo:'', fase:'PP', missoes:[''] });
+const [voo, setVoo] = useState({ tipoVoo:'Local' });
+const tabs = ['Inicial','Informações do voo','Ficha Técnica','Check-out'];
+
+
+// Testes rápidos (console)
+useEffect(()=>{
+console.assert(diffHMtoMinutes('10:00','11:30')===90, '10:00-11:30=90');
+console.assert(minutesToHHMM(110)==='01:50', '110->01:50');
+console.assert(minutesToDecimalTenths(110)==='1.8','110->1.8h');
+console.assert(addMinutesZulu('23:50',20)==='00:10','rollover');
+const txt = `Missão X\n- A;\n- B;\n- C`;
+console.assert(/Missão X/.test(txt)&&/A;/.test(txt)&&/B;/.test(txt)&&/C$/.test(txt.replace(/\n/g,'\n')),'formato lista');
+},[]);
+
+
+const addMissao = ()=> setForm(f=>({...f, missoes:[...f.missoes, '']}));
+const removeMissao = (idx)=> setForm(f=>({...f, missoes: f.missoes.filter((_,i)=>i!==idx)}));
+
+
+return (
+<div style="min-height:100vh">
+<header className="pad" style="position:sticky;top:0;background:#fffbd;backdrop-filter:blur(4px);border-bottom:1px solid #e5e7eb;z-index:10">
+<div className="pad container row" style="justify-content:space-between">
+<div style="font-weight:600">Instrutor de Voo</div>
+<div style="font-size:12px;color:#6b7280">Protótipo</div>
+</div>
+<nav className="container pad" style="padding-top:0">
+<div className="tabs">
+{tabs.map(t=> (
+<button key={t} className={`tab ${aba===t?'active':''}`} onClick={()=>setAba(t)}>{t}</button>
+))}
+</div>
+</nav>
+</header>
+
+
+<main className="container">
+{aba==='Inicial' && (<PaginaInicial form={form} setForm={setForm} addMissao={addMissao} removeMissao={removeMissao} />)}
+{aba==='Informações do voo' && (<PaginaInfoVoo voo={voo} setVoo={setVoo} />)}
+{aba==='Ficha Técnica' && (<PaginaFichaTecnica fase={form.fase} missoesSelecionadas={form.missoes.filter(Boolean)} form={form} />)}
+{aba==='Check-out' && (<PaginaCheckout fase={form.fase} missoesSelecionadas={form.missoes.filter(Boolean)} form={form} />)}
+</main>
+
+
+<footer className="footer container">© <script>document.write(new Date().getFullYear())</script> — Protótipo para instrutores de voo</footer>
+</div>
+);
+};
+
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>

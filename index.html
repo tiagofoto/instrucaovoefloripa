@@ -1,702 +1,593 @@
-<!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Instrução de Voo — Floripa</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <meta name="color-scheme" content="light" />
-</head>
-<body class="min-h-screen bg-gray-100">
-  <div class="max-w-md mx-auto">
-    <!-- Header / Tabs -->
-    <header class="sticky top-0 z-10 bg-white/80 backdrop-blur border-b">
-      <div class="px-4 py-3 flex items-center justify-between">
-        <div class="text-lg font-semibold"></div><!-- título removido -->
-        <div class="text-xs text-gray-500">Protótipo</div>
+import React, { useEffect, useMemo, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Clock, Share2 } from "lucide-react";
+
+// ===== Utilidades de tempo (UTC/Zulu) =====
+const pad2 = (n:number)=> String(n).padStart(2, "0");
+const nowUTC = ()=>{
+  const d = new Date();
+  return { h: d.getUTCHours(), m: d.getUTCMinutes() };
+};
+const toStr = (t:{h:number,m:number})=> `${pad2(t.h)}:${pad2(t.m)}`;
+const strToHM = (s:string)=>{ const [hh,mm] = s.split(":").map(Number); return {h: (hh||0)%24, m: (mm||0)%60}; };
+const addMin = (t:{h:number,m:number}, min:number)=>{
+  const total = t.h*60 + t.m + min;
+  const h = Math.floor(((total%1440)+1440)%1440/60);
+  const m = ((total%1440)+1440)%1440%60;
+  return {h,m};
+};
+const diffMin = (a:{h:number,m:number}, b:{h:number,m:number})=>{ // b - a (minutos)
+  const ma = a.h*60 + a.m; const mb = b.h*60 + b.m;
+  let d = mb - ma; if (d<0) d += 1440; return d;
+};
+const minToHHMM = (min:number)=>{
+  const h = Math.floor(min/60); const m = min%60; return `${pad2(h)}:${pad2(m)}`;
+};
+const minToTenthsTrunc = (min:number)=>{
+  const dec = Math.floor((min/60)*10)/10; return dec.toFixed(1);
+};
+
+// ===== Dados fixos =====
+const FASES = ["PP", "PPR", "PC", "INVA", "PLA"] as const;
+const AERONAVES = ["PR-FLE","PR-FLD","PR-FLN","PT-MJF","PR-MGX","PR-FLM"];
+const TIPO_VOO = ["Local","Navegação"] as const;
+
+// Listas de missão por fase (seleção)
+const MISSOES_POR_FASE: Record<string,string[]> = {
+  PP: [
+    "PS-01","PS-02","PS-03","PS-04","PS-05","PS-06","PS-07","PS-08","PS-09","PS-10",
+    "PS-11","PS-12","PS-13","PS-14","PS-15","PS-16","PS-17","PS-X1","PS-18",
+    "AP-01","AP-02","AP-03","AP-04","AP-05","AP-06","AP-07","AP-08","AP-09",
+    "NV-01","NV-02","NV-03","NV-X1",
+    "NT-01","NT-02","NT-03",
+    "PRCQ","CQPP"
+  ],
+  PPR: [
+    "PS-03","PS-05","PS-07","PS-10","PS-15","PS-17","PS-X1","PS-18",
+    "AP-01","AP-05","AP-06","AP-07","AP-08","AP-09",
+    "NV-01","NV-02","NV-03","NV-X1",
+    "NT-01","NT-02","NT-03",
+    "PRCQ","CQPP"
+  ],
+  PC: [
+    "AD-01","AD-02","AD-03","AD-04","AD-05","AD-06","AD-07","AD-08",
+    "AP-01","AP-02","AP-03","AP-04","AP-05","AP-06","AP-07","AP-08",
+    "MB-01","MB-02","MB-03","MB-04","MB-05","MB-06",
+    // O enunciado lista NV-01..NV-15 para PC; a planilha usa NAV-01..NAV-15.
+    // Vamos aceitar ambos: exibimos NV-xx, mas mapeamos para dados NAV-xx.
+    "NV-01","NV-02","NV-03","NV-04","NV-05","NV-06","NV-07","NV-08",
+    "NV-09","NV-10","NV-11","NV-12","NV-13","NV-14","NV-15",
+    "NT-01","NT-02","NT-03","NT-04","NT-05",
+    "PRCQ","CQPP"
+  ],
+  INVA: [
+    "PI-01","PI-02","PI-03","PI-04","PI-05","PI-06","PI-07","PI-08",
+    "PI-09","PI-10","PI-11","PI-12","PI-13","PI-14","PI-15","PI-16",
+    "NV-01","NV-02",
+    "PRCQ","CQPP"
+  ],
+  PLA: []
+};
+
+// Banco de missões (PP, PC, INVA) — derivado do texto do usuário
+// Chaves: código (ex: "PS-01").
+// Campos: tempo, pousos, conteudo, prereq, registro, competencias
+const DB: Record<string, {tempo:string, pousos:number, conteudo:string, prereq:string, registro:string, competencias:string}> = {
+  // ===== PP =====
+  "PS-01": {tempo:"01:00", pousos:1, conteudo:"Mudanças de Atitude (Subidas, descidas e nivelamento); Curvas de Pequena inclinação; Voo Planado", prereq:"CMA; Ground School", registro:"DC", competencias:"Commitment (CMT); Application of Knowledge (KNO); Communication (COM)"},
+  "PS-02": {tempo:"01:00", pousos:1, conteudo:"Mudanças de Atitude (Subidas, descidas e nivelamento); Curvas de Pequena inclinação; Voo Planado", prereq:"PS-01", registro:"DC", competencias:"Commitment (CMT); Application of Knowledge (KNO); Communication (COM)"},
+  "PS-03": {tempo:"01:00", pousos:1, conteudo:"Mudanças de Atitude (Subidas, descidas e nivelamento); Curvas de Pequena inclinação; Voo Planado", prereq:"PS-02", registro:"DC", competencias:"Commitment (CMT); Application of Knowledge (KNO); Communication (COM)"},
+  "PS-04": {tempo:"01:00", pousos:1, conteudo:"Curvas de Pequena, Média e Grande inclinação; Coordenação de 1º e 2º tipo; Coordenação Atitude x Potência; Estol com/sem motor", prereq:"PS-03", registro:"DC", competencias:"Commitment (CMT); Application of Knowledge (KNO); Situational Awareness (SAW)"},
+  "PS-05": {tempo:"01:00", pousos:2, conteudo:"Coordenação de 1º e 2º tipo; Coordenação Atitude x Potência; Estol com/sem motor; Estol com Flape; Emergência Alta", prereq:"PS-04", registro:"DC", competencias:"Commitment (CMT); Application of Knowledge (KNO); Situational Awareness (SAW)"},
+  "PS-06": {tempo:"01:00", pousos:2, conteudo:"Coordenação de 1º e 2º tipo; Coordenação Atitude x Potência; Estol com/sem motor; Emergência Alta; S sobre estrada", prereq:"PS-05", registro:"DC", competencias:"Communication (COM); Situational Awareness (SAW); Flight Path Management, Manual (FPM)"},
+  "PS-07": {tempo:"01:00", pousos:2, conteudo:"Estol com/sem motor; Emergência Alta; S sobre estrada; 8 entre marcos; Glissada Alta; Emergência Alta", prereq:"PS-06", registro:"DC", competencias:"Communication (COM); Situational Awareness (SAW); Flight Path Management, Manual (FPM)"},
+  "PS-08": {tempo:"01:00", pousos:3, conteudo:"Estol com/sem motor; Emergência Alta; S sobre estrada; 8 entre marcos; Glissada Alta; Emergência Alta", prereq:"PS-07", registro:"DC", competencias:"Application of Procedures (APK); Workload Management (WLM); Problem Solving and Decision Making (PSD)"},
+  "PS-09": {tempo:"01:00", pousos:3, conteudo:"Estol com/sem motor; Emergência Alta; S sobre estrada; 8 entre marcos; Glissada Alta; Emergência Alta", prereq:"PS-08", registro:"DC", competencias:"Application of Procedures (APK); Workload Management (WLM); Problem Solving and Decision Making (PSD)"},
+  "PS-10": {tempo:"01:00", pousos:3, conteudo:"Check de Fase: Aluno deve ser capaz de realizar manobras básicas, previstas nas missões anteriores.", prereq:"PS-09", registro:"DC", competencias:"Flight Path Management, Manual (FPM); Situational Awareness (SAW); Problem Solving and Decision Making (PSD)"},
+  "PS-11": {tempo:"01:00", pousos:3, conteudo:"Voo em Retângulo; TGL; Emergência Baixa; Arremetida no Ar; Aproximação 180°", prereq:"PS-10; Banca ANAC", registro:"DC", competencias:"Application of Procedures (APK); Workload Management (WLM); Flight Path Management, Manual (FPM)"},
+  "PS-12": {tempo:"01:00", pousos:4, conteudo:"Voo em Retângulo; Emergência Baixa; Arremetida no Ar; Arremetida no Solo; Aproximação 180°", prereq:"PS-11", registro:"DC", competencias:"Application of Procedures (APK); Workload Management (WLM); Flight Path Management, Manual (FPM)"},
+  "PS-13": {tempo:"01:00", pousos:5, conteudo:"Voo em Retângulo; Emergências; Arremetidas; Glissada Baixa; Aproximação 90°/180°", prereq:"PS-12", registro:"DC", competencias:"Aplicação de Procedimentos; Gerenciamento da Carga de Trabalho; Gerenciamento do Voo Manual"},
+  "PS-14": {tempo:"01:00", pousos:5, conteudo:"Voo em Retângulo; Emergências; Glissada Baixa; Aproximação 360°; Pouso de Precisão", prereq:"PS-13", registro:"DC", competencias:"Solução de Problemas e Tomada de Decisão; Gerenciamento da Carga de Trabalho; Comunicação"},
+  "PS-15": {tempo:"01:00", pousos:5, conteudo:"Emergências; Glissadas; Aproximação 90°/180°/360°; Pouso de Precisão", prereq:"PS-14", registro:"DC", competencias:"Solução de Problemas e Tomada de Decisão; Gerenciamento da Carga de Trabalho; Comunicação"},
+  "PS-16": {tempo:"01:00", pousos:5, conteudo:"Decolagem Curta; Arremetidas; Pouso Curto; Pouso de Precisão", prereq:"PS-15", registro:"DC", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Consciência Situacional"},
+  "PS-17": {tempo:"01:00", pousos:6, conteudo:"Decolagem Curta; Arremetidas; Aproximação 90°/180°/360°; Pouso Curto", prereq:"PS-16", registro:"DC", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Consciência Situacional"},
+  "PS-X1": {tempo:"01:00", pousos:5, conteudo:"Repasse para Voo Solo: Aluno deve ser capaz de realizar manobras circuito de tráfego padrão, aproximação estabilizada, toques seguros e alinhados.", prereq:"PS-17", registro:"DC", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Consciência Situacional"},
+  "PS-18": {tempo:"01:00", pousos:1, conteudo:"Voo Solo: Nesta missão, o aluno deve estar apto ao Voo Solo.", prereq:"PS-17; 50 Pousos + Banca", registro:"PIC Aluno; Endosso Solo", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Consciência Situacional"},
+  "AP-01": {tempo:"01:00", pousos:6, conteudo:"Decolagem Curta; Arremetidas; Pouso Curto; Pouso de Precisão", prereq:"PS-18", registro:"DC", competencias:"Pontualidade e Comprometimento; Gerenciamento do Voo Manual; Consciência Situacional"},
+  "AP-02": {tempo:"01:00", pousos:6, conteudo:"Decolagem Curta; Arremetidas; Aproximação 90°/180°/360°; Pouso Curto", prereq:"AP-01", registro:"DC", competencias:"Pontualidade e Comprometimento; Gerenciamento do Voo Manual; Consciência Situacional"},
+  "AP-03": {tempo:"01:00", pousos:3, conteudo:"Repasse para Voo Solo: Aluno deve ser capaz de realizar manobras circuito de tráfego padrão, aproximação estabilizada, toques seguros e alinhados.", prereq:"AP-02", registro:"DC", competencias:"Gerenciamento do Voo Manual; Consciência Situacional; Solução de Problemas e Tomada de Decisão"},
+  "AP-04": {tempo:"01:00", pousos:3, conteudo:"Decolagem Curta; Arremetidas; Pouso Curto; Pouso de Precisão", prereq:"AP-03", registro:"DC", competencias:"Comunicação; Solução de Problemas e Tomada de Decisão; Gerenciamento da Carga de Trabalho"},
+  "AP-05": {tempo:"01:00", pousos:6, conteudo:"Aluno deve ser capaz de realizar manobras circuito de tráfego padrão, aproximação estabilizada, toques seguros e alinhados.", prereq:"AP-04; Voo Solo (90 dias)", registro:"DC", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Consciência Situacional"},
+  "AP-06": {tempo:"01:00", pousos:3, conteudo:"Fraseologia padrão; Planejamento de Navegação; Navegação por Contato; Navegação Estimada", prereq:"AP-05", registro:"PIC Aluno", competencias:"Comunicação; Solução de Problemas e Tomada de Decisão; Gerenciamento da Carga de Trabalho"},
+  "AP-07": {tempo:"01:00", pousos:6, conteudo:"Aluno deve ser capaz de realizar manobras circuito de tráfego padrão, aproximação estabilizada, toques seguros e alinhados.", prereq:"AP-06; Voo Solo (90 dias)", registro:"PIC Aluno", competencias:"Aplicação de Procedimentos; Consciência Situacional; Conhecimento"},
+  "AP-08": {tempo:"01:00", pousos:2, conteudo:"Fraseologia padrão (ATC e Classe G); Planejamento de Navegação; Navegação por Contato; Navegação Estimada", prereq:"AP-07", registro:"PIC Aluno", competencias:"Comunicação; Solução de Problemas e Tomada de Decisão; Gerenciamento da Carga de Trabalho"},
+  "AP-09": {tempo:"01:00", pousos:6, conteudo:"Aluno deve ser capaz de realizar manobras circuito de tráfego padrão, aproximação estabilizada, toques seguros e alinhados.", prereq:"AP-08; Voo Solo (90 dias)", registro:"PIC Aluno", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Consciência Situacional"},
+  "NV-01": {tempo:"02:00", pousos:3, conteudo:"Navegação Curta – PIC Aluno; Aluno deverá apresentar documentação obrigatória para Navegação; Mínimo 30nm de distância, sem ADs intermediários", prereq:"AP-09", registro:"PIC Aluno; Endosso Nav Solo (90d)", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Pontualidade e Comprometimento"},
+  "NV-02": {tempo:"03:00", pousos:2, conteudo:"Navegação Longa – Duplo Comando; Aluno deverá apresentar documentação obrigatória para Navegação; 150nm de distância, pousos em 2 ADs intermediários distintos da Origem.", prereq:"AP-09", registro:"DC", competencias:"Consciência Situacional; Comunicação; Liderança e Trabalho em Equipe"},
+  "NV-03": {tempo:"03:00", pousos:3, conteudo:"Navegação Curta – PIC Aluno; Aluno deverá apresentar documentação obrigatória para Navegação; Mínimo 30nm em rota", prereq:"NV-01", registro:"PIC Aluno; Endosso Nav Solo (90d)", competencias:"Solução de Problemas e Tomada de Decisão; Gerenciamento da Carga de Trabalho; Conhecimento"},
+  "NT-01": {tempo:"01:00", pousos:4, conteudo:"Decolagem Normal; Pouso sem Flaps; Pouso com Flaps; Volta à Ilha (opcional)", prereq:"AP-09", registro:"DC", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Pontualidade e Comprometimento"},
+  "NT-02": {tempo:"01:00", pousos:4, conteudo:"Decolagem Curta; Pousos Curtos; Pouso com Flaps; Volta à Ilha (opcional)", prereq:"NT-01", registro:"DC", competencias:"Consciência Situacional; Comunicação; Liderança e Trabalho em Equipe"},
+  "NT-03": {tempo:"01:00", pousos:4, conteudo:"Decolagem Normal; Arremetidas; Pousos curtos; Volta à Ilha (opcional)", prereq:"NT-02", registro:"DC; 10 Pousos Noturnos", competencias:"Solução de Problemas e Tomada de Decisão; Gerenciamento da Carga de Trabalho; Conhecimento"},
+
+  // ===== PC (inclui NAV-xx) =====
+  "AD-01": {tempo:"01:00", pousos:1, conteudo:"Decolagem normal; Apresentação da área de instrução; Curvas de Peq/Méd variando altitude; Entrada no Tráfego", prereq:"CMA; Ground School; PPA checado", registro:"DC", competencias:"Pontualidade e Comprometimento; Conhecimento; Comunicação"},
+  "AD-02": {tempo:"01:00", pousos:1, conteudo:"Decolagem Curta; Curvas de Grande inclinação; Estol com/sem motor", prereq:"AD-01", registro:"DC", competencias:"Pontualidade e Comprometimento; Conhecimento; Consciência Situacional"},
+  "AD-03": {tempo:"01:00", pousos:1, conteudo:"Decolagem Curta; Curvas de Grande inclinação; Estol com/sem motor; Voo em retângulo; Pouso Curto", prereq:"AD-02", registro:"PIC Aluno", competencias:"Comunicação; Consciência Situacional; Gerenciamento do Voo Manual"},
+  "AD-04": {tempo:"01:00", pousos:1, conteudo:"Estol com/sem motor; Voo em retângulo; Pane simulada; Pouso Curto", prereq:"AD-03", registro:"PIC Aluno", competencias:"Gerenciamento do Voo Manual; Consciência Situacional; Solução de Problemas e Tomada de Decisão"},
+  "AD-05": {tempo:"01:00", pousos:1, conteudo:"Curvas de Grande inclinação; Voo em retângulo; Pane simulada; Pouso Curto", prereq:"AD-04", registro:"PIC Aluno", competencias:"Solução de Problemas e Tomada de Decisão; Gerenciamento da Carga de Trabalho; Comunicação"},
+  "AD-06": {tempo:"01:00", pousos:1, conteudo:"Decolagem curta; Pane simulada; Arremetidas no ar; Pouso curto", prereq:"AD-05", registro:"PIC Aluno", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Consciência Situacional"},
+  "AD-07": {tempo:"01:00", pousos:1, conteudo:"Voo em retângulo; Pane simulada; Arremetidas no ar; Pouso com Flap", prereq:"AD-06", registro:"PIC Aluno", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Consciência Situacional"},
+  "AD-08": {tempo:"01:00", pousos:1, conteudo:"Aluno deve ser capaz de realizar manobras circuito de tráfego padrão, aproximação estabilizada, toques seguros e alinhados.", prereq:"AD-07", registro:"PIC Aluno", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Consciência Situacional"},
+  "MB-01": {tempo:"01:00", pousos:1, conteudo:"Curvas de Grande inclinação; S sobre estrada; 8 sobre marcos", prereq:"AP-08", registro:"DC", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Pontualidade e Comprometimento"},
+  "MB-02": {tempo:"01:00", pousos:1, conteudo:"Curvas de Grande inclinação; S sobre estrada; 8 sobre marcos; Glissadas", prereq:"MB-01", registro:"DC", competencias:"Consciência Situacional; Comunicação; Liderança e Trabalho em Equipe"},
+  "MB-03": {tempo:"01:00", pousos:1, conteudo:"Decolagem com Obstáculos; Pane após Decolagem; Glissadas; Pouso Curto sem Flap", prereq:"MB-02", registro:"DC", competencias:"Solução de Problemas e Tomada de Decisão; Gerenciamento da Carga de Trabalho; Conhecimento"},
+  "MB-04": {tempo:"01:00", pousos:1, conteudo:"Decolagem com Obstáculos; Pane após Decolagem; Glissadas; Pouso Curto sem Flap", prereq:"MB-03", registro:"DC", competencias:"Pontualidade e Comprometimento; Conhecimento; Comunicação"},
+  "MB-05": {tempo:"01:00", pousos:1, conteudo:"Pane após Decolagem; Glissadas; Pouso Curto sem Flap", prereq:"MB-04", registro:"DC", competencias:"Consciência Situacional; Comunicação; Liderança e Trabalho em Equipe"},
+  "MB-06": {tempo:"01:00", pousos:1, conteudo:"Aluno deve ser capaz de realizar manobras recuperando a aeronave de atitudes anormais de voo.", prereq:"MB-05", registro:"PIC Aluno", competencias:"Solução de Problemas e Tomada de Decisão; Gerenciamento da Carga de Trabalho; Conhecimento"},
+  // AP-01..AP-08 já definidos em PP (reaproveitados)
+  "AP-01_PC": {tempo:"01:00", pousos:5, conteudo:"Aproximação 90°; Arremetida no Ar; Pouso de Precisão; Arremetida no Solo", prereq:"AD-08", registro:"PIC Aluno", competencias:"Pontualidade e Comprometimento; Gerenciamento do Voo Manual; Consciência Situacional"},
+  "AP-02_PC": {tempo:"01:00", pousos:5, conteudo:"Aproximação 90°; Arremetida no Ar; Pouso de Precisão; Arremetida no Solo", prereq:"AP-01", registro:"PIC Aluno", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Consciência Situacional"},
+  "AP-03_PC": {tempo:"01:00", pousos:5, conteudo:"Aproximação 180°; Arremetida no Ar; Pouso de Precisão; Arremetida no Solo", prereq:"AP-02", registro:"PIC Aluno", competencias:"Comunicação; Solução de Problemas e Tomada de Decisão; Gerenciamento da Carga de Trabalho"},
+  "AP-04_PC": {tempo:"01:00", pousos:5, conteudo:"Aproximação 180°; Arremetida no Ar; Pouso de Precisão; Arremetida no Solo", prereq:"AP-03", registro:"PIC Aluno", competencias:"Aplicação de Procedimentos; Consciência Situacional; Conhecimento"},
+  "AP-05_PC": {tempo:"01:00", pousos:5, conteudo:"Aproximação 180°; Arremetida no Ar; Pouso de Precisão; Arremetida no Solo", prereq:"AP-04", registro:"PIC Aluno", competencias:"Comunicação; Solução de Problemas e Tomada de Decisão; Gerenciamento da Carga de Trabalho"},
+  "AP-06_PC": {tempo:"01:00", pousos:5, conteudo:"Aproximação 360°; Arremetida no Ar; Pouso de Precisão; Arremetida no Solo", prereq:"AP-05", registro:"PIC Aluno", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Consciência Situacional"},
+  "AP-07_PC": {tempo:"01:00", pousos:5, conteudo:"Aproximação 360°; Arremetida no Ar; Pouso de Precisão; Arremetida no Solo", prereq:"AP-06", registro:"PIC Aluno", competencias:"Aplicação de Procedimentos; Consciência Situacional; Conhecimento"},
+  "AP-08_PC": {tempo:"01:00", pousos:5, conteudo:"Aluno deve ser capaz de realizar manobras circuito de tráfego padrão, aproximações em pane no circuito e Pousos de precisão.", prereq:"AP-07", registro:"PIC Aluno", competencias:"Comunicação; Solução de Problemas e Tomada de Decisão; Gerenciamento da Carga de Trabalho"},
+  // NAV-xx (PC) — aceitaremos alias NV-xx
+  "NAV-01": {tempo:"02:00", pousos:2, conteudo:"Navegação VFR Padrão. Conforme previsto no Programa de Missões", prereq:"AD-08", registro:"PIC Aluno", competencias:"Prática e Ciência das Competências Não-Técnicas"},
+  "NAV-02": {tempo:"02:00", pousos:2, conteudo:"Navegação VFR Padrão. Conforme previsto no Programa de Missões", prereq:"AD-08", registro:"PIC Aluno", competencias:"Prática e Ciência das Competências Não-Técnicas"},
+  "NAV-03": {tempo:"02:00", pousos:2, conteudo:"Navegação VFR Padrão. Conforme previsto no Programa de Missões", prereq:"AD-08", registro:"PIC Aluno", competencias:"Prática e Ciência das Competências Não-Técnicas"},
+  "NAV-04": {tempo:"03:00", pousos:3, conteudo:"Navegação VFR Padrão. Conforme previsto no Programa de Missões", prereq:"AD-08", registro:"PIC Aluno", competencias:"Prática e Ciência das Competências Não-Técnicas"},
+  "NAV-05": {tempo:"03:00", pousos:3, conteudo:"Navegação VFR Padrão. Conforme previsto no Programa de Missões", prereq:"AD-08", registro:"PIC Aluno", competencias:"Prática e Ciência das Competências Não-Técnicas"},
+  "NAV-06": {tempo:"03:00", pousos:2, conteudo:"Navegação VFR Padrão. Conforme previsto no Programa de Missões", prereq:"AD-08", registro:"PIC Aluno", competencias:"Prática e Ciência das Competências Não-Técnicas"},
+  "NAV-07": {tempo:"03:00", pousos:3, conteudo:"Navegação VFR Padrão. Conforme previsto no Programa de Missões", prereq:"AD-08", registro:"PIC Aluno", competencias:"Prática e Ciência das Competências Não-Técnicas"},
+  "NAV-08": {tempo:"04:00", pousos:4, conteudo:"Navegação VFR Padrão. Conforme previsto no Programa de Missões", prereq:"AD-08", registro:"PIC Aluno", competencias:"Prática e Ciência das Competências Não-Técnicas"},
+  "NAV-09": {tempo:"04:00", pousos:4, conteudo:"Navegação VFR Padrão. Conforme previsto no Programa de Missões", prereq:"AD-08", registro:"PIC Aluno", competencias:"Prática e Ciência das Competências Não-Técnicas"},
+  "NAV-10": {tempo:"04:00", pousos:4, conteudo:"Navegação VFR Padrão. Conforme previsto no Programa de Missões", prereq:"AD-08", registro:"PIC Aluno", competencias:"Prática e Ciência das Competências Não-Técnicas"},
+  "NAV-11": {tempo:"05:00", pousos:4, conteudo:"Navegação VFR Padrão. Conforme previsto no Programa de Missões", prereq:"AD-08", registro:"PIC Aluno", competencias:"Prática e Ciência das Competências Não-Técnicas"},
+  "NAV-12": {tempo:"04:00", pousos:4, conteudo:"Navegação VFR Padrão. Conforme previsto no Programa de Missões", prereq:"AD-08", registro:"PIC Aluno", competencias:"Prática e Ciência das Competências Não-Técnicas"},
+  "NAV-13": {tempo:"05:00", pousos:4, conteudo:"Navegação VFR Padrão. Conforme previsto no Programa de Missões", prereq:"AD-08", registro:"PIC Aluno", competencias:"Prática e Ciência das Competências Não-Técnicas"},
+  "NAV-14": {tempo:"03:00", pousos:3, conteudo:"Navegação VFR Padrão. Conforme previsto no Programa de Missões", prereq:"AD-08", registro:"PIC Aluno", competencias:"Prática e Ciência das Competências Não-Técnicas"},
+  "NAV-15": {tempo:"03:00", pousos:3, conteudo:"Navegação VFR Padrão. Conforme previsto no Programa de Missões", prereq:"AD-08", registro:"PIC Aluno", competencias:"Prática e Ciência das Competências Não-Técnicas"},
+  "NT-04": {tempo:"01:00", pousos:3, conteudo:"Decolagem Normal; Arremetidas no solo; Pousos normais", prereq:"NT-03", registro:"PIC Aluno", competencias:"Solução de Problemas e Tomada de Decisão; Gerenciamento da Carga de Trabalho; Comunicação"},
+  "NT-05": {tempo:"01:00", pousos:3, conteudo:"Decolagem Normal; Arremetidas no solo; Pousos normais", prereq:"NT-04; 10 Pousos noturnos", registro:"Consciência Situacional", competencias:"Solução de Problemas e Tomada de Decisão; Gerenciamento da Carga de Trabalho"},
+  "PR-CQ": {tempo:"01:30", pousos:4, conteudo:"Avaliação final pré-check; Aluno deverá demonstrar... Deve portar toda a documentação requerida para o voo de Check.", prereq:"Liberação para Check (Processos Voelfonso)", registro:"DC; Endosso Check (30d)", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Consciência Situacional"},
+  "CQ-PC": {tempo:"01:30", pousos:3, conteudo:"Voo de Check – Piloto Comercial; ...", prereq:"Aprovação no Pré-Check", registro:"DC", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Consciência Situacional"},
+
+  // ===== INVA =====
+  "PI-01": {tempo:"01:00", pousos:5, conteudo:"Decolagem Curta; Arremetidas no ar; Curvas de Peq/Méd variando altitude; Pouso com Flaps", prereq:"CMA; Ground School; PCA checado", registro:"DC", competencias:"Pontualidade e Comprometimento; Conhecimento; Comunicação"},
+  "PI-02": {tempo:"01:00", pousos:5, conteudo:"Aproximação 180°; Arremetida no Ar; Pouso de Precisão; Arremetida no Solo", prereq:"PI-01", registro:"DC", competencias:"Pontualidade e Comprometimento; Conhecimento; Consciência Situacional"},
+  "PI-03": {tempo:"01:30", pousos:5, conteudo:"Aproximação 360°; Arremetida no Ar; Pouso de Precisão; Arremetida no Solo", prereq:"PI-02", registro:"DC", competencias:"Comunicação; Consciência Situacional; Gerenciamento do Voo Manual"},
+  "PI-04": {tempo:"01:30", pousos:1, conteudo:"Voo em retângulo; Arremetidas no ar; Curvas de Peq/Méd variando altitude; Entrada no Tráfego", prereq:"PI-03", registro:"DC", competencias:"Gerenciamento do Voo Manual; Consciência Situacional; Solução de Problemas e Tomada de Decisão"},
+  "PI-05": {tempo:"01:00", pousos:1, conteudo:"Decolagem Curta; Curvas de Grande inclinação; Pane simulada; Estol com/sem motor", prereq:"PI-04", registro:"DC", competencias:"Solução de Problemas e Tomada de Decisão; Gerenciamento da Carga de Trabalho; Comunicação"},
+  "PI-06": {tempo:"01:00", pousos:1, conteudo:"Decolagem Curta; Curvas de Grande inclinação; Estol com/sem motor; Voo em retângulo; Pouso Curto", prereq:"PI-05", registro:"DC", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Consciência Situacional"},
+  "PI-07": {tempo:"02:00", pousos:4, conteudo:"Aproximação 90°; Arremetida no Ar; Pouso de Precisão; Arremetida no Solo", prereq:"PI-06", registro:"DC", competencias:"Pontualidade e Comprometimento; Gerenciamento do Voo Manual; Consciência Situacional"},
+  "PI-08": {tempo:"02:00", pousos:4, conteudo:"Aproximação 180°; Arremetida no Ar; Pouso de Precisão; Arremetida no Solo", prereq:"PI-07", registro:"DC", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Consciência Situacional"},
+  "PI-09": {tempo:"02:00", pousos:4, conteudo:"Aproximação 360°; Arremetida no Ar; Pouso de Precisão; Arremetida no Solo", prereq:"PI-08", registro:"DC", competencias:"Comunicação; Solução de Problemas e Tomada de Decisão; Gerenciamento da Carga de Trabalho"},
+  "PI-10": {tempo:"01:00", pousos:4, conteudo:"Decolagem Curta; Curvas de Grande inclinação; Estol com/sem motor; Voo em retângulo; Pouso Curto", prereq:"PI-09", registro:"DC", competencias:"Aplicação de Procedimentos; Consciência Situacional; Conhecimento"},
+  "PI-11": {tempo:"02:00", pousos:3, conteudo:"Curvas de Grande inclinação; S sobre estrada; 8 sobre marcos; Glissadas", prereq:"PI-10", registro:"PIc Aluno", competencias:"Comunicação; Solução de Problemas e Tomada de Decisão; Gerenciamento da Carga de Trabalho"},
+  "PI-12": {tempo:"02:00", pousos:3, conteudo:"Decolagem com Obstáculos; Pane após Decolagem; Glissadas; Pouso Curto sem Flap", prereq:"PI-11", registro:"DC", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Consciência Situacional"},
+  "PI-13": {tempo:"02:00", pousos:3, conteudo:"Aproximação 360°; Arremetida no Ar; Pouso de Precisão; Arremetida no Solo", prereq:"PI-12", registro:"PIC Aluno", competencias:"Aplicação de Procedimentos; Consciência Situacional; Conhecimento"},
+  "PI-14": {tempo:"01:30", pousos:3, conteudo:"Decolagem com Obstáculos; Pane após Decolagem; Glissadas; Pouso Curto sem Flap", prereq:"PI-13", registro:"DC", competencias:"Comunicação; Solução de Problemas e Tomada de Decisão; Gerenciamento da Carga de Trabalho"},
+  "PI-15": {tempo:"01:30", pousos:5, conteudo:"Pane após Decolagem; Glissadas; Pouso Curto sem Flap", prereq:"PI-14", registro:"PIc Aluno", competencias:"Comunicação; Solução de Problemas e Tomada de Decisão; Gerenciamento da Carga de Trabalho"},
+  "PI-16": {tempo:"01:30", pousos:3, conteudo:"Aluno deve ser capaz de realizar manobras recuperando a aeronave de atitudes anormais de voo.", prereq:"PI-15", registro:"DC", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Pontualidade e Comprometimento"},
+  "NV-01(INVA)": {tempo:"02:00", pousos:4, conteudo:"Aluno deverá apresentar documentação obrigatória para Navegação; Briefing de carta VAC", prereq:"PI-05", registro:"PIC Aluno", competencias:"Pontualidade e Comprometimento; Conhecimento; Comunicação"},
+  "NV-02(INVA)": {tempo:"02:00", pousos:4, conteudo:"Aluno deverá apresentar documentação obrigatória para Navegação; Briefing de consciência situacional para entrada no Circuito", prereq:"NV-02", registro:"PIC Aluno", competencias:"Solução de Problemas e Tomada de Decisão; Gerenciamento da Carga de Trabalho; Conhecimento"},
+  "PR-CQ(INVA)": {tempo:"01:30", pousos:4, conteudo:"Avaliação final pré-check...", prereq:"Liberação para Check (Processos VoeFloripa)", registro:"DC; Endosso Check (30d)", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Consciência Situacional"},
+  "CQ-INVA": {tempo:"01:30", pousos:3, conteudo:"Voo de Check – Instrutor de Voo...", prereq:"Liberação Processos VoeFloripa", registro:"DC", competencias:"Gerenciamento do Voo Manual; Aplicação de Procedimentos; Consciência Situacional"},
+};
+
+// Alias NV-xx -> NAV-xx (PC)
+const aliasCodigo = (cod:string)=>{
+  if(/^NV-\d{2}$/.test(cod)) {
+    const nav = cod.replace("NV-", "NAV-");
+    if(DB[nav]) return nav;
+  }
+  if(cod === "PRCQ") return "PR-CQ"; // normalizar
+  if(cod === "CQPP") return "CQ-PC"; // aproximação
+  return cod;
+};
+
+// ===== Componentes auxiliares =====
+function HMSelect({label, value, onChange, onNow}:{label:string, value:string, onChange:(v:string)=>void, onNow:()=>void}){
+  const {h,m} = strToHM(value);
+  return (
+    <div className="flex items-end gap-2">
+      <div className="flex flex-col">
+        <span className="text-xs text-muted-foreground mb-1">{label}</span>
+        <div className="flex items-center gap-1">
+          <Select value={String(h)} onValueChange={(v)=> onChange(`${pad2(+v)}:${pad2(m)}`)}>
+            <SelectTrigger className="w-16"><SelectValue placeholder="HH" /></SelectTrigger>
+            <SelectContent>{Array.from({length:24},(_,i)=>(<SelectItem key={i} value={String(i)}>{pad2(i)}</SelectItem>))}</SelectContent>
+          </Select>
+          <span className="pb-2">:</span>
+          <Select value={String(m)} onValueChange={(v)=> onChange(`${pad2(h)}:${pad2(+v)}`)}>
+            <SelectTrigger className="w-16"><SelectValue placeholder="MM" /></SelectTrigger>
+            <SelectContent>{[0,5,10,15,20,25,30,35,40,45,50,55].map(i=>(<SelectItem key={i} value={String(i)}>{pad2(i)}</SelectItem>))}</SelectContent>
+          </Select>
+        </div>
       </div>
-      <nav class="px-2 pb-2 grid grid-cols-4 gap-2" id="tabs"></nav>
-    </header>
+      <Button type="button" variant="outline" size="icon" onClick={onNow} title="Preencher com Zulu agora">
+        <Clock className="w-4 h-4" />
+      </Button>
+    </div>
+  );
+}
 
-    <!-- App -->
-    <main id="app" class="pb-6"></main>
-
-    <footer class="px-4 py-6 text-center text-xs text-gray-400">
-      © <span id="year"></span> — Protótipo para instrutores de voo
-    </footer>
-  </div>
-
-  <script>
-    // ==========================
-    // FONTE DOS DADOS (opcional: planilhas publicadas em CSV)
-    // ==========================
-    const CSV_URLS = {
-      PP: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQi36jUxlUkQBmzYm7DpFG3HH9GQoiYbGdybwxf8mnYPjY3EDgrNnpCqu4BN9B7censF_2xcpH7WxZq/pub?gid=0&single=true&output=csv",
-      PC: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQi36jUxlUkQBmzYm7DpFG3HH9GQoiYbGdybwxf8mnYPjY3EDgrNnpCqu4BN9B7censF_2xcpH7WxZq/pub?gid=1936904888&single=true&output=csv",
-      INVA: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQi36jUxlUkQBmzYm7DpFG3HH9GQoiYbGdybwxf8mnYPjY3EDgrNnpCqu4BN9B7censF_2xcpH7WxZq/pub?gid=2094617121&single=true&output=csv"
-    };
-
-    // ==========================
-    // DADOS (carregados dinamicamente das planilhas ou localmente)
-    // ==========================
-    const MISSOES = { PP:{}, PC:{}, INVA:{} };
-    const FASES = ["PP","PPR","PC","INVA","PLA"]; // PPR/PLA seguem fixos
-    const MISSOES_POR_FASE = { PP:[], PPR:[], PC:[], INVA:[], PLA:[] };
-
-    // Listas usadas na tela de Informações do voo
-    const AERONAVES = ["PR-FLE","PR-FLD","PR-FLN","PT-MJF","PR-MGX","PR-FLM"];
-    const TIPOS_VOO = ["Local","Navegação"];
-
-    // Mapeamento de colunas tolerante a variações de nomes/casos/acentos
-    const COLMAP = {
-      code: ["codigo","código","missao","missão","cod","code"],
-      tempo: ["tempo","tempo_voo","tempodevoo"],
-      pousos: ["pousos","pouso"],
-      conteudo: ["conteudo","conteúdo","manobras","conteudo/manobras"],
-      prereq: ["pre-requisitos","pré-requisitos","prerequisitos","prereq","pre_req"],
-      registro: ["registro","reg"],
-      competencias: ["competencias","competências","competencia","competência"]
-    };
-
-    // ==========================
-    // STATE
-    // ==========================
-    const state = {
-      dadosCarregados: { PP:false, PC:false, INVA:false },
-      erroCarregamento: null,
-      aba: "Inicial",
-      form: { nomeAluno:"", canacAluno:"", dataVoo:"", fase:"PP", missoes:[""] },
-      voo: { tipoVoo:"Local", aeronave:"", local:{}, navegacao:{} },
-      clockZulu: "--:--",
-      checkoutTexto: "",
-      _checkoutInit: false,
-      settings: { offline:false } // Modo offline padrão: sem fetch automático
-    };
-
-    // ==========================
-    // Cache local para datasets (evita rede)
-    // ==========================
-    function saveDatasetsToCache(){
-      try{
-        const payload = { MISSOES, MISSOES_POR_FASE, ts: Date.now() };
-        localStorage.setItem('datasets_cache_v1', JSON.stringify(payload));
-      }catch(_){ /* ignore */ }
-    }
-    function restoreDatasetsFromCache(){
-      try{
-        const raw = localStorage.getItem('datasets_cache_v1');
-        if (!raw) return;
-        const obj = JSON.parse(raw);
-        if (obj?.MISSOES){ for (const k of ["PP","PC","INVA"]) MISSOES[k] = obj.MISSOES[k] || {}; }
-        if (obj?.MISSOES_POR_FASE){ for (const k of ["PP","PC","INVA"]) MISSOES_POR_FASE[k] = obj.MISSOES_POR_FASE[k] || []; }
-        for (const k of ["PP","PC","INVA"]) state.dadosCarregados[k] = (MISSOES_POR_FASE[k]||[]).length>0;
-      }catch(_){ /* ignore */ }
-    }
-
-    // ==========================
-    // CSV helpers (parser simples com suporte a aspas)
-    // ==========================
-    function normalizeHeader(s){
-      // Remoção segura de acentos (NFD + faixa \u0300-\u036f) e não alfanuméricos
-      return String(s||"")
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g,'') // remove diacríticos
-        .replace(/[^a-z0-9]/g,'');
-    }
-    function csvParse(text){
-      const rows = [];
-      let i=0, field='', row=[], inQuotes=false;
-      while(i < text.length){
-        const c = text[i];
-        if (inQuotes){
-          if (c==='"' && text[i+1]==='"'){ field+='"'; i+=2; continue; }
-          if (c==='"'){ inQuotes=false; i++; continue; }
-          field += c; i++; continue;
-        } else {
-          if (c==='"'){ inQuotes=true; i++; continue; }
-          if (c===','){ row.push(field); field=''; i++; continue; }
-          if (c==='\n'){ row.push(field); rows.push(row); row=[]; field=''; i++; continue; }
-          if (c==='\r'){ i++; continue; }
-          field += c; i++; continue;
-        }
-      }
-      row.push(field); rows.push(row);
-      return rows;
-    }
-    function parseMissionsCSV(text){
-      const rowsRaw = csvParse(text);
-      if (!rowsRaw.length) return { list:[], map:{} };
-      const headerRow = rowsRaw[0];
-      const headerNorm = headerRow.map(h=>normalizeHeader(h));
-      const findCol = (arr)=>{
-        for (let i=0;i<headerNorm.length;i++) if (arr.includes(headerNorm[i])) return i;
-        return -1;
-      };
-      const idx = {
-        code: findCol(COLMAP.code),
-        tempo: findCol(COLMAP.tempo),
-        pousos: findCol(COLMAP.pousos),
-        conteudo: findCol(COLMAP.conteudo),
-        prereq: findCol(COLMAP.prereq),
-        registro: findCol(COLMAP.registro),
-        competencias: findCol(COLMAP.competencias)
-      };
-      const list=[], map={};
-      for (let r=1;r<rowsRaw.length;r++){
-        const row = rowsRaw[r];
-        const code = (idx.code>=0? row[idx.code]: '').trim();
-        if (!code) continue;
-        const tempo_voo = (idx.tempo>=0? row[idx.tempo]: '').trim();
-        const pousos = (idx.pousos>=0? row[idx.pousos]: '').trim();
-        const conteudo = (idx.conteudo>=0? row[idx.conteudo]: '').trim();
-        const prereq = (idx.prereq>=0? row[idx.prereq]: '').trim();
-        const registro = (idx.registro>=0? row[idx.registro]: '').trim();
-        const competencias = (idx.competencias>=0? row[idx.competencias]: '').trim();
-        list.push(code);
-        map[code] = {
-          tempo_voo: tempo_voo || "-",
-          pousos: pousos? Number(pousos.replace(/[^0-9]/g,'')) : undefined,
-          conteudo: conteudo ? [conteudo] : [],
-          pre_requisitos: prereq ? prereq.split(/;|,|\n/).map(s=>s.trim()).filter(Boolean) : [],
-          registro: registro || "",
-          competencias: competencias ? competencias.split(/;|,|\n/).map(s=>s.trim()).filter(Boolean) : []
-        };
-      }
-      return { list, map };
-    }
-
-    // ==========================
-    // Fetch condicional (somente quando solicitado e em HTTPS)
-    // ==========================
-    async function loadCSV(url){
-      const ctrl = new AbortController();
-      const t = setTimeout(()=> ctrl.abort(), 12000);
-      try{
-        const res = await fetch(url, { cache:'no-store', signal: ctrl.signal });
-        clearTimeout(t);
-        if (!res.ok) throw new Error(`Falha ao carregar: ${res.status}`);
-        return await res.text();
-      }catch(err){
-        clearTimeout(t);
-        const noScheme = url.replace(/^https?:\/\//i, '');
-        const proxyUrl = `https://r.jina.ai/http://${noScheme}`;
-        const res2 = await fetch(proxyUrl, { cache:'no-store' });
-        if (!res2.ok) throw new Error(`Falha proxy: ${res2.status}`);
-        return await res2.text();
-      }
-    }
-    async function loadAllDatasets(){
-      try{
-        for (const fase of ["PP","PC","INVA"]){
-          const text = await loadCSV(CSV_URLS[fase]);
-          const { list, map } = parseMissionsCSV(text);
-          MISSOES[fase] = map;
-          MISSOES_POR_FASE[fase] = list;
-          state.dadosCarregados[fase] = true;
-        }
-        saveDatasetsToCache();
-        render();
-      }catch(err){
-        console.error(err);
-        state.erroCarregamento = String(err.message||err);
-        render();
-      }
-    }
-
-    // ==========================
-    // HORA ZULU helpers
-    // ==========================
-    const pad2 = (n)=> String(n).padStart(2,"0");
-    const dateToZuluHM = (d)=> `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
-    const addMinutesZulu = (baseHM, minutes)=>{
-      const [h,m] = baseHM.split(":").map(Number);
-      const base = new Date(); base.setUTCHours(h, m, 0, 0);
-      const nd = new Date(base.getTime() + minutes*60*1000);
-      return dateToZuluHM(nd);
-    };
-    const diffHMtoMinutes = (startHM, endHM)=>{
-      const [sh,sm] = startHM.split(":").map(Number);
-      const [eh,em] = endHM.split(":").map(Number);
-      let start = sh*60 + sm; let end = eh*60 + em; if (end < start) end += 24*60;
-      return end - start;
-    };
-    const minutesToHHMM = (mins)=> `${pad2(Math.floor(mins/60))}:${pad2(mins%60)}`;
-
-    // Trunca em décimos de hora
-    function minutesToDecimalTenthsStr(mins){
-      const tenths = Math.floor(mins / 6); // 6 min = 0,1h (truncado)
-      const str = (tenths / 10).toFixed(1);
-      return str.replace(".", ",");
-    }
-
-    // ==========================
-    // WhatsApp (somente Check-out)
-    // ==========================
-    async function shareWhatsApp(text, numero){
-      try {
-        if (navigator.share && (!navigator.canShare || navigator.canShare({ text }))){
-          await navigator.share({ text });
-          return;
-        }
-      } catch {}
-      const base = numero ? `https://wa.me/${numero}?text=` : `https://api.whatsapp.com/send?text=`;
-      window.open(base + encodeURIComponent(text), "_blank");
-    }
-
-    // ==========================
-    // Helpers UI
-    // ==========================
-    function Field(label, inner){
-      return `
-        <div class="flex flex-col gap-1">
-          <label class="text-sm text-gray-700">${label}</label>
-          ${inner}
-        </div>`;
-    }
-    function Select(options, value, attrs=""){
-      const opts = options.map(o=>`<option value="${o}" ${o===value?'selected':''}>${o}</option>`).join("");
-      return `<select ${attrs} class="w-full border rounded-xl p-3 pr-8 bg-white">${opts}</select>`;
-    }
-    function Input(value, attrs=""){
-      return `<input ${attrs} class="w-full border rounded-xl p-3 bg-white" value="${value||""}" />`;
-    }
-    function TextArea(value, attrs=""){
-      return `<textarea ${attrs} class="w-full border rounded-2xl p-3 bg-white resize-none">${value||""}</textarea>`;
-    }
-    function TimeField(id, label, value){
-      const [hh="00", mm="00"] = String(value||"00:00").split(":").map(x=>pad2(+x||0));
-      const HOURS = Array.from({length:24}, (_,i)=>pad2(i)).map(h=>`<option value="${h}" ${h===hh?'selected':''}>${h}</option>`).join("");
-      const MINUTES = Array.from({length:60}, (_,i)=>pad2(i)).map(m=>`<option value="${m}" ${m===mm?'selected':''}>${m}</option>`).join("");
-      const html = `
-        <div class="flex flex-col gap-1">
-          <label class="text-sm text-gray-700">${label}</label>
-          <div class="flex items-center gap-2">
-            <select data-id="${id}" data-part="hh" class="border rounded-xl p-3">${HOURS}</select>
-            <span class="text-gray-500">:</span>
-            <select data-id="${id}" data-part="mm" class="border rounded-xl p-3">${MINUTES}</select>
-            <button type="button" data-id="${id}" data-action="nowz" class="ml-2 px-3 py-2 rounded-xl border bg-white text-xs">Agora (Z)</button>
-          </div>
-          <input type="hidden" id="${id}" value="${hh}:${mm}" />
-        </div>`;
-      return html;
-    }
-    function bindTimeField(id, onChange){
-      const hh = document.querySelector(`select[data-id="${id}"][data-part="hh"]`);
-      const mm = document.querySelector(`select[data-id="${id}"][data-part="mm"]`);
-      const hidden = document.getElementById(id);
-      const btn = document.querySelector(`button[data-id="${id}"][data-action="nowz"]`);
-      function update(){ hidden.value = `${hh.value}:${mm.value}`; hidden.dispatchEvent(new Event("change")); }
-      if (hh) hh.onchange = update;
-      if (mm) mm.onchange = update;
-      if (hidden) hidden.addEventListener("change", ()=> onChange(hidden.value));
-      if (btn) btn.onclick = ()=>{ const n=new Date(); hh.value=pad2(n.getUTCHours()); mm.value=pad2(n.getUTCMinutes()); update(); };
-    }
-
-    function semicolonSplitToItems(raw){
-      const arr = Array.isArray(raw) ? raw : [String(raw||"")];
-      return arr.flatMap(s=> String(s).split(";"))
-                .map(x=>x.trim()).filter(Boolean);
-    }
-    function datasetByFase(fase){
-      if (fase==="PC") return MISSOES.PC;
-      if (fase==="INVA") return MISSOES.INVA;
-      if (fase==="PP" || fase==="PPR") return MISSOES.PP;
-      return {};
-    }
-
-    // ==========================
-    // Relatórios / Somatórios
-    // ==========================
-    function pageInfoResultados(){
-      if ((state.voo.tipoVoo||"Local")==="Local"){
-        const minsTotal = diffHMtoMinutes(state.voo.local?.acionamento||"00:00", state.voo.local?.corte||"00:00");
-        const minsVoo   = diffHMtoMinutes(state.voo.local?.decolagem  ||"00:00", state.voo.local?.pouso  ||"00:00");
-        return { totalHHMM: minutesToHHMM(minsTotal), totalDecimal: minutesToDecimalTenthsStr(minsTotal), vooHHMM: minutesToHHMM(minsVoo), vooDecimal: minutesToDecimalTenthsStr(minsVoo), pernas:[] };
-      } else {
-        const acion = state.voo.navegacao?.acionamento || "00:00";
-        const corte = state.voo.navegacao?.corte || "00:00";
-        const minsTotal = diffHMtoMinutes(acion, corte);
-        const pernas = (state.voo.navegacao?.perna||[]).map(p=>{
-          const mm = diffHMtoMinutes(p.decolagem||"00:00", p.pouso||"00:00");
-          return { ...p, hhmm: minutesToHHMM(mm), dec: minutesToDecimalTenthsStr(mm) };
-        });
-        return { totalHHMM: minutesToHHMM(minsTotal), totalDecimal: minutesToDecimalTenthsStr(minsTotal), vooHHMM:null, vooDecimal:null, pernas };
-      }
-    }
-    function formatInfoVooForText(){
-      const r = pageInfoResultados();
-      const tipo = state.voo.tipoVoo || 'Local';
-      const aeronave = state.voo.aeronave || '-';
-      if (tipo === 'Local'){
-        return [
-          'INFORMAÇÕES DO VOO',
-          `Aeronave: ${aeronave}`,
-          `Tipo de voo: ${tipo}`,
-          `Acionamento (Z): ${state.voo.local?.acionamento || '-'}`,
-          `Decolagem (Z): ${state.voo.local?.decolagem || '-'}`,
-          `Pouso (Z): ${state.voo.local?.pouso || '-'}`,
-          `Corte (Z): ${state.voo.local?.corte || '-'}`,
-          `Total (Acion→Corte): ${r.totalHHMM} — ${r.totalDecimal} h`,
-          `Decolagem→Pouso: ${r.vooHHMM} — ${r.vooDecimal} h`,
-          ''
-        ].join('\n');
-      } else {
-        const linhas = [
-          'INFORMAÇÕES DO VOO',
-          `Aeronave: ${aeronave}`,
-          `Tipo de voo: ${tipo}`,
-          `Acionamento (Z): ${state.voo.navegacao?.acionamento || '-'}`,
-        ];
-        (state.voo.navegacao?.perna||[]).forEach((p, i)=>{
-          const mm = diffHMtoMinutes(p.decolagem||'00:00', p.pouso||'00:00');
-          linhas.push(`Perna ${i+1} — Decolagem (Z): ${p.decolagem||'-'} | Pouso (Z): ${p.pouso||'-'} | Tempo: ${minutesToHHMM(mm)} — ${minutesToDecimalTenthsStr(mm)} h`);
-        });
-        linhas.push(`Corte (Z): ${state.voo.navegacao?.corte || '-'}`);
-        linhas.push(`Total (Acion→Corte): ${r.totalHHMM} — ${r.totalDecimal} h`);
-        linhas.push('');
-        return linhas.join('\n');
-      }
-    }
-
-    // ==========================
-    // Páginas
-    // ==========================
-    function PageInicial(){
-      const todayISO = new Date().toISOString().slice(0,10);
-      if (!state.form.dataVoo) state.form.dataVoo = todayISO;
-
-      const lista = MISSOES_POR_FASE[state.form.fase||"PP"];
-      const missoes = (state.form.missoes||[]).map((m,idx)=>`
-        <div class="p-3 rounded-2xl border shadow-sm bg-white flex items-center gap-3">
-          ${Select(["",...(lista?.length? lista: [""])], m, `data-ev="missao" data-idx="${idx}"`)}
-          <button class="ml-auto text-sm text-red-600" data-ev="remove-missao" data-idx="${idx}">Remover</button>
-        </div>`).join("");
-
-      const flags = state.dadosCarregados;
-      const modo = state.settings.offline ? 'Modo offline (sem rede)' : 'Modo online';
-      const status = `<div class="text-xs ${flags.PP&&flags.PC&&flags.INVA?'text-green-600':'text-gray-500'}">${modo} — Planilhas: PP ${flags.PP?'ok':'…'} • PC ${flags.PC?'ok':'…'} • INVA ${flags.INVA?'ok':'…'}</div>`;
-      const err = state.erroCarregamento ? `<div class="text-xs text-red-600">${state.erroCarregamento}</div>` : '';
-
-      const controles = `
-        <div class="p-3 rounded-2xl border bg-white flex flex-col gap-2">
-          <div class="flex items-center justify-between">
-            <div class="text-sm">Fonte dos dados</div>
-            <label class="text-xs flex items-center gap-2">
-              <input type="checkbox" ${state.settings.offline?'checked':''} data-ev="toggle-offline" /> Offline
-            </label>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <button class="px-3 py-2 rounded-xl border" data-ev="sync-inet" ${state.settings.offline?'disabled':''}>Atualizar da Internet</button>
-            <button class="px-3 py-2 rounded-xl border" data-ev="import-csv" data-fase="PP">Importar CSV PP</button>
-            <button class="px-3 py-2 rounded-xl border" data-ev="import-csv" data-fase="PC">Importar CSV PC</button>
-            <button class="px-3 py-2 rounded-xl border" data-ev="import-csv" data-fase="INVA">Importar CSV INVA</button>
-            <button class="px-3 py-2 rounded-xl border" data-ev="limpar-cache">Limpar cache</button>
-          </div>
-          <div class="text-[11px] text-gray-500">
-            Dica: use "Atualizar da Internet" apenas quando estiver em HTTPS. No modo offline, cole o CSV publicado (conteúdo bruto) em "Importar" e ele ficará salvo em cache local.
-          </div>
-        </div>`;
-
-      return `
-        <div class="p-4 flex flex-col gap-4">
-          ${status}${err}
-          ${controles}
-          <div class="grid grid-cols-1 gap-4">
-            ${Field("Nome do Aluno", Input(state.form.nomeAluno, `data-ev="nomeAluno" placeholder="Digite o nome"`))}
-            ${Field("CANAC do Aluno", Input(state.form.canacAluno, `data-ev="canacAluno" placeholder="Ex.: 123456"`))}
-            ${Field("Data do Voo", `<input type="date" class="w-full border rounded-xl p-3" value="${state.form.dataVoo||todayISO}" data-ev="dataVoo" />`)}
-            ${Field("Fase da Instrução", Select(FASES, state.form.fase||"PP", `data-ev="fase"`))}
-          </div>
-
-          <div class="mt-2">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-sm text-gray-700">Missões</span>
-              <button class="px-3 py-1 rounded-xl bg-black text-white" data-ev="add-missao">+ Adicionar</button>
-            </div>
-            <div class="flex flex-col gap-3">${missoes}</div>
-          </div>
-        </div>`;
-    }
-
-    function PageInfoVoo(){
-      const nowHM = dateToZuluHM(new Date());
-      if (!state.voo.local?.acionamento && state.voo.tipoVoo!=="Navegação"){
-        const acion = nowHM, deco = addMinutesZulu(acion,10), pouso = addMinutesZulu(acion,55), corte = addMinutesZulu(acion,60);
-        state.voo = {
-          aeronave: state.voo.aeronave||"",
-          tipoVoo: state.voo.tipoVoo||"Local",
-          local: { acionamento: acion, decolagem: deco, pouso, corte },
-          navegacao: state.voo.navegacao || { acionamento: acion, perna: [{ decolagem: deco, pouso: addMinutesZulu(deco,30)}], corte }
-        };
-      }
-
-      const tipoLocal = `
-        ${TimeField("l-acion","Acionamento (Zulu)", state.voo.local?.acionamento||"")}
-        ${TimeField("l-decol","Decolagem (Zulu)", state.voo.local?.decolagem||"")}
-        ${TimeField("l-pouso","Pouso (Zulu)", state.voo.local?.pouso||"")}
-        ${TimeField("l-corte","Corte (Zulu)", state.voo.local?.corte||"")}
-      `;
-      const pernas = (state.voo.navegacao?.perna||[]).map((p,idx)=>`
-        <div class="p-3 rounded-2xl border bg-white shadow-sm">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-sm font-medium">Perna ${idx+1}</span>
-            <button class="text-xs text-red-600" data-ev="remove-perna" data-idx="${idx}">Remover</button>
-          </div>
-          <div class="grid grid-cols-1 gap-3">
-            ${TimeField(`n-dec-${idx}`,"Decolagem (Zulu)", p.decolagem)}
-            ${TimeField(`n-pou-${idx}`,"Pouso (Zulu)", p.pouso)}
-          </div>
+function ResultadoBloco({titulo, minutos}:{titulo:string, minutos:number}){
+  if(minutos<=0) return null;
+  return (
+    <Card className="mt-3">
+      <CardContent className="p-3">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-medium">{titulo}</div>
+          <div className="text-sm">{minToHHMM(minutos)} — <span className="font-semibold">{minToTenthsTrunc(minutos)}</span></div>
         </div>
-      `).join("");
-      const tipoNav = `
-        ${TimeField("n-acion","Acionamento (Zulu)", state.voo.navegacao?.acionamento||"")}
-        ${pernas}
-        <button class="w-full rounded-2xl bg-black text-white py-2" data-ev="add-perna">+ Adicionar Decolagem/Pouso</button>
-        ${TimeField("n-corte","Corte (Zulu)", state.voo.navegacao?.corte||"")}
-      `;
+      </CardContent>
+    </Card>
+  );
+}
 
-      const r = pageInfoResultados();
+// ===== App principal =====
+export default function App(){
+  // Estado: Página Inicial
+  const [aluno, setAluno] = useState("");
+  const [canac, setCanac] = useState("");
+  const [dataVoo, setDataVoo] = useState(()=>{
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = pad2(d.getMonth()+1);
+    const dd = pad2(d.getDate());
+    return `${y}-${m}-${dd}`; // input type=date
+  });
+  const [fase, setFase] = useState<typeof FASES[number]>("PP");
+  const [missoes, setMissoes] = useState<string[]>([]);
 
-      return `
-        <div class="p-4 flex flex-col gap-4">
-          <div class="grid grid-cols-1 gap-4">
-            ${Field("Aeronave", Select(["",...AERONAVES], state.voo.aeronave||"", `data-ev="aeronave"`))}
-            ${Field("Tipo de Voo", Select(TIPOS_VOO, state.voo.tipoVoo||"Local", `data-ev="tipoVoo"`))}
-          </div>
+  // Aba ativa
+  const [tab, setTab] = useState("inicio");
 
-          ${(state.voo.tipoVoo||"Local")==="Local" ? `<div class="grid grid-cols-1 gap-3">${tipoLocal}</div>` : `<div class="grid grid-cols-1 gap-3">${tipoNav}</div>`}
+  const addMissao = (cod?:string)=>{
+    const lista = MISSOES_POR_FASE[fase];
+    const next = cod || lista[0];
+    setMissoes((prev)=> [...prev, next]);
+  };
 
-          <div class="mt-2 p-3 rounded-2xl bg-gray-50 border">
-            <div class="text-sm text-gray-600 mb-1">Somatórios</div>
-            <div class="text-sm">Total (Acionamento → Corte): <b>${r.totalHHMM}</b> – <b>${r.totalDecimal} h</b></div>
-            ${(state.voo.tipoVoo||"Local")==="Local"
-              ? `<div class="text-sm">Decolagem → Pouso: <b>${r.vooHHMM}</b> – <b>${r.vooDecimal} h</b></div>`
-              : `<div class="text-sm flex flex-col gap-1">
-                  ${r.pernas.map((p,i)=>`<div>Perna ${i+1} (Dec→Pou): <b>${p.hhmm}</b> – <b>${p.dec} h</b></div>`).join("")}
-                </div>`
-            }
-          </div>
+  // Estado: Informações do voo
+  const [aeronave, setAeronave] = useState(AERONAVES[0]);
+  const [tipoVoo, setTipoVoo] = useState<typeof TIPO_VOO[number]>("Local");
 
-          <div class="sticky bottom-3 p-4 rounded-2xl bg-black text-white text-center text-xl tracking-wider">
-            Horário Zulu: <b id="clockZulu">${state.clockZulu}Z</b>
-          </div>
-        </div>`;
+  // Campos horário (Zulu)
+  const baseNow = nowUTC();
+  const [acionamento, setAcionamento] = useState(()=> toStr(baseNow));
+  const [decolagem, setDecolagem]   = useState(()=> toStr(addMin(baseNow, 10)));
+  const [pouso, setPouso]           = useState(()=> toStr(addMin(baseNow, 55)));
+  const [corte, setCorte]           = useState(()=> toStr(addMin(baseNow, 60)));
+
+  // Navegação: múltiplos legs (Deco/Pouso)
+  const [legs, setLegs] = useState<{deco:string, pouso:string}[]>([]);
+
+  // Ajuste automático para novos legs (+30 min de cada campo anterior)
+  const addLeg = ()=>{
+    if(legs.length===0){
+      const d1 = addMin(strToHM(decolagem), 30);
+      const p1 = addMin(strToHM(pouso), 30);
+      setLegs([{deco: toStr(d1), pouso: toStr(p1)}]);
+    } else {
+      const last = legs[legs.length-1];
+      const d2 = addMin(strToHM(last.deco), 30);
+      const p2 = addMin(strToHM(last.pouso), 30);
+      setLegs([...legs, {deco: toStr(d2), pouso: toStr(p2)}]);
     }
+  };
 
-    function PageFichaTecnica(){
-      const ds = datasetByFase(state.form.fase);
-      const cods = (state.form.missoes||[]).filter(Boolean);
-      const carregando = (state.form.fase==='PP' && !state.dadosCarregados.PP) || (state.form.fase==='PC' && !state.dadosCarregados.PC) || (state.form.fase==='INVA' && !state.dadosCarregados.INVA);
+  // Cálculos de soma
+  const minutosAcionamentoCorte = useMemo(()=> diffMin(strToHM(acionamento), strToHM(corte)), [acionamento,corte]);
+  const minutosDecolagemPouso = useMemo(()=> diffMin(strToHM(decolagem), strToHM(pouso)), [decolagem,pouso]);
+  const minutosLegs = useMemo(()=> legs.reduce((acc,lg)=> acc + diffMin(strToHM(lg.deco), strToHM(lg.pouso)), 0), [legs]);
 
-      if (carregando){
-        return `<div class="p-4 text-sm text-gray-500">Carregando dados da planilha…</div>`;
+  // Relógio Zulu ao vivo
+  const [zulu, setZulu] = useState(toStr(nowUTC()));
+  useEffect(()=>{
+    const id = setInterval(()=> setZulu(toStr(nowUTC())), 1000);
+    return ()=> clearInterval(id);
+  },[]);
+
+  // Ao abrir a aba de Informações do voo, preencher horários com Zulu atual
+  useEffect(()=>{
+    if(tab === 'voo'){
+      const base = nowUTC();
+      setAcionamento(toStr(base));
+      setDecolagem(toStr(addMin(base,10)));
+      setPouso(toStr(addMin(base,55)));
+      setCorte(toStr(addMin(base,60)));
+    }
+  }, [tab]);
+
+  // Texto de Check-out (pré-preenchido a partir das missões)
+  const checkOutBase = useMemo(()=>{
+    if(missoes.length===0) return "";
+    const blocos = missoes.map((m)=>{
+      const key = aliasCodigo(m);
+      const data = DB[key] || DB[`${m}(INVA)`];
+      if(!data) return `Missão: ${m}`;
+      const linhas = (data.conteudo||"").split(";").map(s=> s.trim()).filter(Boolean).map(s=> `- ${s}`);
+      return `Missão ${m}\n${linhas.join("\n")}`;
+    });
+    return blocos.join("\n\n");
+  },[missoes]);
+  const [checkOutTexto, setCheckOutTexto] = useState("");
+  useEffect(()=>{ setCheckOutTexto(checkOutBase); }, [checkOutBase]);
+
+  // Montar conteúdo para compartilhamento (WhatsApp)
+  const shareText = useMemo(()=>{
+    const partes:string[] = [];
+    partes.push(`Aluno: ${aluno || "-"}`);
+    partes.push(`CANAC: ${canac || "-"}`);
+    const [yyyy,mm,dd] = dataVoo.split("-");
+    partes.push(`Data do Voo: ${dd}/${mm}/${yyyy}`);
+    partes.push(`Fase: ${fase}`);
+    if(missoes.length) partes.push(`Missões: ${missoes.join(", ")}`);
+
+    partes.push("\n[Informações do voo]");
+    partes.push(`Aeronave: ${aeronave}`);
+    partes.push(`Tipo de Voo: ${tipoVoo}`);
+
+    if(tipoVoo === "Local"){
+      partes.push(`Acionamento (Z): ${acionamento}`);
+      partes.push(`Decolagem (Z): ${decolagem}`);
+      partes.push(`Pouso (Z): ${pouso}`);
+      partes.push(`Corte (Z): ${corte}`);
+      partes.push(`Tempo Acionamento→Corte: ${minToHHMM(minutosAcionamentoCorte)} (${minToTenthsTrunc(minutosAcionamentoCorte)})`);
+      partes.push(`Tempo Decolagem→Pouso: ${minToHHMM(minutosDecolagemPouso)} (${minToTenthsTrunc(minutosDecolagemPouso)})`);
+    } else {
+      partes.push(`Acionamento (Z): ${acionamento}`);
+      partes.push(`Decolagem (Z): ${decolagem}`);
+      partes.push(`Pouso (Z): ${pouso}`);
+      if(legs.length){
+        legs.forEach((lg,idx)=>{
+          partes.push(`Leg ${idx+1} - Decolagem: ${lg.deco} / Pouso: ${lg.pouso}`);
+        })
       }
-
-      const infos = cods.map(code=>({ code, data: ds?.[code] }));
-
-      const itens = infos.map(m=>`
-        <div class="p-4 rounded-2xl border bg-white shadow-sm">
-          <div class="text-lg font-semibold mb-2">Missão: ${m.code}</div>
-          ${!m.data ? `<div class="text-sm text-red-600">Não encontrado na planilha.</div>` : `
-            <div class="flex flex-col gap-2 text-sm">
-              <div><b>Tempo de Voo:</b> ${m.data.tempo_voo||"-"}</div>
-              <div><b>Pousos:</b> ${m.data.pousos ?? "-"}</div>
-              <div><b>Pré-requisitos:</b> ${(m.data.pre_requisitos||[]).join(", ") || "-"}</div>
-              <div><b>Registro:</b> ${m.data.registro || "-"}</div>
-              <div><b>Competências:</b> ${(m.data.competencias||[]).join(", ") || "-"}</div>
-              <div>
-                <b>Conteúdo / Manobras:</b>
-                <div class="mt-1">Missão ${m.code}</div>
-                <ul class="ml-5">
-                  ${semicolonSplitToItems(m.data.conteudo).map((c,i,arr)=>`<li>- ${c}${i<arr.length-1?';':''}</li>`).join("")}
-                </ul>
-              </div>
-            </div>`}
-        </div>
-      `).join("");
-
-      return `
-        <div class="p-4 flex flex-col gap-4">
-          ${infos.length===0 ? `<div class="text-sm text-gray-500">Selecione ao menos uma missão na página inicial.</div>` : ""}
-          ${itens}
-        </div>`;
+      const totalLegs = minutosDecolagemPouso + minutosLegs;
+      partes.push(`Corte (Z): ${corte}`);
+      partes.push(`Tempo Acionamento→Corte: ${minToHHMM(minutosAcionamentoCorte)} (${minToTenthsTrunc(minutosAcionamentoCorte)})`);
+      partes.push(`Soma por perna (Deco→Pouso): ${minToHHMM(totalLegs)} (${minToTenthsTrunc(totalLegs)})`);
     }
 
-    function PageCheckout(){
-      const ds = datasetByFase(state.form.fase);
-      const cods = (state.form.missoes||[]).filter(Boolean);
-      if (!state._checkoutInit){
-        const linhas=[];
-        cods.forEach(code=>{
-          const d = ds?.[code];
-          linhas.push(`Missão ${code}`);
-          if (d && d.conteudo){
-            const itens = semicolonSplitToItems(d.conteudo);
-            itens.forEach((it,idx)=> linhas.push(`- ${it}${idx<itens.length-1?';':''}`));
-          }
-          linhas.push("");
-        });
-        state.checkoutTexto = linhas.join("\n");
-        state._checkoutInit = true;
-      }
+    partes.push("\n[Check-out]\n" + (checkOutTexto || ""));
+    return partes.join("\n");
+  }, [aluno, canac, dataVoo, fase, missoes, aeronave, tipoVoo, acionamento, decolagem, pouso, corte, minutosAcionamentoCorte, minutosDecolagemPouso, minutosLegs, checkOutTexto]);
 
-      const headerH = 56 + 48; // aprox header + tabs
-      const footerH = 56;      // aprox footer
-      const padding = 24 + 48; // paddings/margens
-      const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
-      const taHeight = Math.max(200, vh - headerH - footerH - padding);
+  const waLink = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
 
-      return `
-        <div class="p-4 flex flex-col gap-3">
-          <div class="text-sm text-gray-600">Escreva aqui sua avaliação (livre). O texto vem pré-preenchido com o descritivo da(s) missão(ões), podendo ser editado.</div>
-          <div class="flex gap-2 mb-2">
-            <button class="px-3 py-2 rounded-xl bg-black text-white text-xs" data-ev="share-checkout">Compartilhar WhatsApp</button>
-          </div>
-          ${TextArea(state.checkoutTexto, `data-ev="checkout-texto" style="height:${taHeight}px"`)}
-        </div>`;
-    }
+  // Render
+  return (
+    <div className="min-h-screen bg-muted/20 p-3 flex justify-center">
+      <div className="w-full max-w-md">
+        <Card className="shadow-xl rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-xl">Instrutor de Voo — Diário</CardTitle>
+            <div className="text-xs text-muted-foreground">Layout mobile • horários em Zulu (UTC)</div>
+          </CardHeader>
+          <CardContent>
+            <Tabs value={tab} onValueChange={setTab} className="w-full">
+              <TabsList className="grid grid-cols-4">
+                <TabsTrigger value="inicio">Inicial</TabsTrigger>
+                <TabsTrigger value="voo">Info. do voo</TabsTrigger>
+                <TabsTrigger value="ficha">Ficha Técnica</TabsTrigger>
+                <TabsTrigger value="checkout">Check-out</TabsTrigger>
+              </TabsList>
 
-    // ==========================
-    // Render raiz + bindings
-    // ==========================
-    function render(){
-      const tabs = ["Inicial","Informações do voo","Ficha Técnica","Check-out"];
-      document.getElementById("tabs").innerHTML = tabs.map(t=>`
-        <button data-aba="${t}" class="py-2 rounded-2xl text-sm ${state.aba===t?'bg-black text-white':'bg-gray-200 text-gray-800'}">${t}</button>
-      `).join("");
+              {/* ===== PÁGINA INICIAL ===== */}
+              <TabsContent value="inicio" className="mt-4">
+                <div className="grid gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground">Nome do Aluno</label>
+                    <Input value={aluno} onChange={(e)=> setAluno(e.target.value)} placeholder="Ex.: João Silva" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">CANAC do Aluno</label>
+                    <Input value={canac} onChange={(e)=> setCanac(e.target.value)} placeholder="Ex.: 123456" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Data do Voo</label>
+                    <Input type="date" value={dataVoo} onChange={(e)=> setDataVoo(e.target.value)} />
+                  </div>
 
-      const app = document.getElementById("app");
-      app.innerHTML =
-        state.aba==="Inicial" ? PageInicial()
-      : state.aba==="Informações do voo" ? PageInfoVoo()
-      : state.aba==="Ficha Técnica" ? PageFichaTecnica()
-      : PageCheckout();
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Fase da Instrução</label>
+                      <Select value={fase} onValueChange={(v)=>{ setFase(v as any); setMissoes([]); }}>
+                        <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          {FASES.map(f=>(<SelectItem key={f} value={f}>{f}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Missões</label>
+                      <div className="flex gap-2">
+                        <Select value={missoes[missoes.length-1]} onValueChange={(v)=>{
+                          if(missoes.length){
+                            setMissoes(prev=> prev.map((m,i)=> i===prev.length-1 ? v : m));
+                          } else {
+                            addMissao(v);
+                          }
+                        }}>
+                          <SelectTrigger className="flex-1"><SelectValue placeholder="Escolha a missão" /></SelectTrigger>
+                          <SelectContent>
+                            {MISSOES_POR_FASE[fase].map(m=>(<SelectItem key={m} value={m}>{m}</SelectItem>))}
+                          </SelectContent>
+                        </Select>
+                        <Button type="button" variant="secondary" onClick={()=> addMissao()} title="Adicionar mais uma missão">
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      {missoes.length>1 && (
+                        <div className="text-xs text-muted-foreground mt-1">Selecionadas: {missoes.join(", ")}</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
 
-      bind();
-    }
+              {/* ===== PÁGINA INFORMAÇÕES DO VOO ===== */}
+              <TabsContent value="voo" className="mt-4">
+                <div className="grid gap-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Aeronave</label>
+                      <Select value={aeronave} onValueChange={setAeronave}>
+                        <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          {AERONAVES.map(a=>(<SelectItem key={a} value={a}>{a}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Tipo de Voo</label>
+                      <Select value={tipoVoo} onValueChange={(v)=>{ setTipoVoo(v as any); setLegs([]); }}>
+                        <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          {TIPO_VOO.map(t=>(<SelectItem key={t} value={t}>{t}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
 
-    function bind(){
-      document.querySelectorAll('[data-aba]').forEach(b=>{
-        b.onclick = ()=> { state.aba = b.getAttribute('data-aba'); if (state.aba!=="Check-out") state._checkoutInit = false; render(); };
-      });
+                  <div className="grid gap-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <HMSelect label="Acionamento" value={acionamento} onChange={setAcionamento} onNow={()=> setAcionamento(toStr(nowUTC()))} />
+                      <HMSelect label="Decolagem" value={decolagem} onChange={setDecolagem} onNow={()=> setDecolagem(toStr(nowUTC()))} />
+                      <HMSelect label="Pouso" value={pouso} onChange={setPouso} onNow={()=> setPouso(toStr(nowUTC()))} />
+                      <HMSelect label="Corte" value={corte} onChange={setCorte} onNow={()=> setCorte(toStr(nowUTC()))} />
+                    </div>
 
-      // Inicial
-      const set = (k)=> (e)=> state.form[k] = e.target.value;
-      document.querySelectorAll('[data-ev="nomeAluno"]').forEach(el=> el.oninput = set('nomeAluno'));
-      document.querySelectorAll('[data-ev="canacAluno"]').forEach(el=> el.oninput = set('canacAluno'));
-      document.querySelectorAll('[data-ev="dataVoo"]').forEach(el=> el.oninput = set('dataVoo'));
-      const fase = document.querySelector('[data-ev="fase"]'); if (fase) fase.onchange = (e)=>{ state.form.fase = e.target.value; state.form.missoes=[""]; render(); };
-      document.querySelectorAll('[data-ev="missao"]').forEach(el=> el.onchange = (e)=>{ const idx=+el.getAttribute('data-idx'); state.form.missoes[idx]=e.target.value; });
-      const addM = document.querySelector('[data-ev="add-missao"]'); if (addM) addM.onclick = ()=> { state.form.missoes.push(""); render(); };
-      document.querySelectorAll('[data-ev="remove-missao"]').forEach(el=> el.onclick = ()=>{ const idx=+el.getAttribute('data-idx'); state.form.missoes = state.form.missoes.filter((_,i)=>i!==idx); render(); });
+                    {tipoVoo === "Navegação" && (
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-sm font-medium">Pernas adicionais (Navegação)</div>
+                          <Button variant="secondary" size="sm" onClick={addLeg}><Plus className="w-4 h-4 mr-1"/>Adicionar perna</Button>
+                        </div>
+                        <div className="grid gap-3">
+                          {legs.map((lg,idx)=> (
+                            <div key={idx} className="grid grid-cols-2 gap-3">
+                              <HMSelect label={`Leg ${idx+1} — Decolagem`} value={lg.deco} onChange={(v)=>{
+                                setLegs(prev=> prev.map((x,i)=> i===idx? {...x, deco:v} : x));
+                              }} onNow={()=> setLegs(prev=> prev.map((x,i)=> i===idx? {...x, deco: toStr(nowUTC())} : x))} />
+                              <HMSelect label={`Leg ${idx+1} — Pouso`} value={lg.pouso} onChange={(v)=>{
+                                setLegs(prev=> prev.map((x,i)=> i===idx? {...x, pouso:v} : x));
+                              }} onNow={()=> setLegs(prev=> prev.map((x,i)=> i===idx? {...x, pouso: toStr(nowUTC())} : x))} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
-      const offlineToggle = document.querySelector('[data-ev="toggle-offline"]');
-      if (offlineToggle) offlineToggle.onchange = (e)=>{ state.settings.offline = !!e.target.checked; render(); };
-      const syncBtn = document.querySelector('[data-ev="sync-inet"]');
-      if (syncBtn) syncBtn.onclick = async ()=>{ if (state.settings.offline) return; await loadAllDatasets(); };
-      document.querySelectorAll('[data-ev="import-csv"]').forEach(btn=>{
-        btn.onclick = ()=>{
-          const fase = btn.getAttribute('data-fase');
-          const txt = prompt(`Cole aqui o CSV bruto da planilha ${fase}`,'');
-          if (!txt) return;
-          const { list, map } = parseMissionsCSV(txt);
-          MISSOES[fase] = map; MISSOES_POR_FASE[fase] = list; state.dadosCarregados[fase] = true;
-          saveDatasetsToCache();
-          render();
-        };
-      });
-      const clearBtn = document.querySelector('[data-ev="limpar-cache"]');
-      if (clearBtn) clearBtn.onclick = ()=>{ localStorage.removeItem('datasets_cache_v1'); location.reload(); };
+                    {/* Resultados */}
+                    <ResultadoBloco titulo="Acionamento → Corte" minutos={minutosAcionamentoCorte} />
+                    <ResultadoBloco titulo={tipoVoo==="Local"?"Decolagem → Pouso":"Soma das pernas (inclui perna principal)"} minutos={ tipoVoo==="Local"? minutosDecolagemPouso : (minutosDecolagemPouso+minutosLegs) } />
+                  </div>
 
-      // Info voo
-      const aer = document.querySelector('[data-ev="aeronave"]'); if (aer) aer.onchange = (e)=> state.voo.aeronave = e.target.value;
-      const tipo = document.querySelector('[data-ev="tipoVoo"]'); if (tipo) tipo.onchange = (e)=> { state.voo.tipoVoo = e.target.value; render(); };
+                  {/* Relógio Zulu */}
+                  <div className="mt-4 text-center">
+                    <div className="text-[11px] text-muted-foreground">Horário Zulu (UTC)</div>
+                    <div className="text-2xl font-mono tracking-wider">{zulu} Z</div>
+                  </div>
+                </div>
+              </TabsContent>
 
-      // TimeFields — re-render para atualizar somatórios
-      bindTimeField("l-acion", v=> { state.voo.local={...(state.voo.local||{}), acionamento:v}; render(); });
-      bindTimeField("l-decol", v=> { state.voo.local={...(state.voo.local||{}), decolagem:v}; render(); });
-      bindTimeField("l-pouso", v=> { state.voo.local={...(state.voo.local||{}), pouso:v}; render(); });
-      bindTimeField("l-corte", v=> { state.voo.local={...(state.voo.local||{}), corte:v}; render(); });
-      bindTimeField("n-acion", v=> { state.voo.navegacao={...(state.voo.navegacao||{}), acionamento:v}; render(); });
-      bindTimeField("n-corte", v=> { state.voo.navegacao={...(state.voo.navegacao||{}), corte:v}; render(); });
+              {/* ===== PÁGINA FICHA TÉCNICA ===== */}
+              <TabsContent value="ficha" className="mt-4">
+                <div className="grid gap-3">
+                  {missoes.length===0 && (
+                    <div className="text-sm text-muted-foreground">Selecione ao menos uma missão na aba Inicial.</div>
+                  )}
+                  {missoes.map((m, idx)=>{
+                    const key = aliasCodigo(m);
+                    const d = DB[key] || DB[`${m}(INVA)`];
+                    return (
+                      <Card key={idx} className="border">
+                        <CardHeader className="py-3">
+                          <CardTitle className="text-base">Missão: {m}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid gap-2">
+                          <div className="text-sm"><span className="font-medium">Tempo de Voo:</span> {d?.tempo || "-"}</div>
+                          <div className="text-sm"><span className="font-medium">Pousos:</span> {d?.pousos ?? "-"}</div>
+                          <div className="text-sm"><span className="font-medium">Pré-requisitos:</span> {d?.prereq || "-"}</div>
+                          <div className="text-sm"><span className="font-medium">Registro:</span> {d?.registro || "-"}</div>
+                          <div className="text-sm"><span className="font-medium">Competências:</span> {d?.competencias || "-"}</div>
+                          <div className="text-sm"><span className="font-medium">Conteúdo / Manobras:</span>
+                            <ul className="list-disc pl-5 mt-1 space-y-1">
+                              {(d?.conteudo||"").split(";").map((x,i)=> x.trim()&& (<li key={i} className="text-sm">{x.trim()}</li>))}
+                            </ul>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </TabsContent>
 
-      // pernas
-      const addP = document.querySelector('[data-ev="add-perna"]'); if (addP) addP.onclick = ()=>{
-        const per = state.voo.navegacao?.perna || [];
-        const last = per[per.length-1] || { decolagem: state.voo.navegacao?.acionamento || "00:00", pouso: addMinutesZulu(state.voo.navegacao?.acionamento || "00:00", 30) };
-        const nextDec = addMinutesZulu(last.pouso, 30);
-        const nextPou = addMinutesZulu(nextDec, 30);
-        state.voo.navegacao = { ...(state.voo.navegacao||{}), perna: [...per, { decolagem: nextDec, pouso: nextPou }] };
-        render();
-      };
-      document.querySelectorAll('[data-ev="remove-perna"]').forEach(el=> el.onclick = ()=>{
-        const idx = +el.getAttribute('data-idx');
-        const per = [...(state.voo.navegacao?.perna||[])];
-        per.splice(idx,1);
-        state.voo.navegacao = { ...(state.voo.navegacao||{}), perna: per };
-        render();
-      });
-      (state.voo.navegacao?.perna||[]).forEach((p,idx)=>{
-        bindTimeField(`n-dec-${idx}`, v=>{ const per=[...(state.voo.navegacao?.perna||[])]; per[idx]={...per[idx], decolagem:v}; state.voo.navegacao={...(state.voo.navegacao||{}), perna:per}; render(); });
-        bindTimeField(`n-pou-${idx}`, v=>{ const per=[...(state.voo.navegacao?.perna||[])]; per[idx]={...per[idx], pouso:v}; state.voo.navegacao={...(state.voo.navegacao||{}), perna:per}; render(); });
-      });
+              {/* ===== PÁGINA CHECK-OUT ===== */}
+              <TabsContent value="checkout" className="mt-4">
+                <div className="grid gap-2">
+                  <Card>
+                    <CardHeader className="py-3"><CardTitle className="text-base">Check-out</CardTitle></CardHeader>
+                    <CardContent className="grid gap-2">
+                      {missoes.length>0 && (
+                        <div className="text-sm"><span className="font-medium">Missões selecionadas:</span> {missoes.join(", ")}</div>
+                      )}
+                      <Textarea value={checkOutTexto} onChange={(e)=> setCheckOutTexto(e.target.value)} placeholder="Escreva aqui a avaliação do voo..." rows={8} />
+                      <a href={waLink} target="_blank" rel="noreferrer">
+                        <Button className="w-full"><Share2 className="w-4 h-4 mr-2"/>Compartilhar no WhatsApp</Button>
+                      </a>
+                      <div className="text-[11px] text-muted-foreground">O texto inclui: Nome, CANAC, data, fase, missões, informações do voo e o check-out acima.</div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
 
-      // Checkout
-      const area = document.querySelector('[data-ev="checkout-texto"]');
-      if (area) area.oninput = (e)=> state.checkoutTexto = e.target.value;
-      const shareC = document.querySelector('[data-ev="share-checkout"]');
-      if (shareC) shareC.onclick = ()=>{
-        const cabecalho = [
-          `Aluno: ${state.form.nomeAluno || '-'}`,
-          `CANAC: ${state.form.canacAluno || '-'}`,
-          `Data do voo: ${state.form.dataVoo || '-'}`
-        ].join('\n');
-        const blocoVoo = formatInfoVooForText();
-        const corpo = state.checkoutTexto || "";
-        const msg = `${cabecalho}\n\n${blocoVoo}${corpo}`.trim();
-        shareWhatsApp(msg);
-      };
-    }
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
 
-    // ==========================
-    // Relógio Zulu
-    // ==========================
-    function tick(){
-      state.clockZulu = dateToZuluHM(new Date());
-      const el = document.getElementById("clockZulu");
-      if (el) el.textContent = state.clockZulu + "Z";
-    }
+// ===== Pequenos "testes" utilitários (log no console) =====
+function assertEq(name:string, got:any, exp:any){
+  if (JSON.stringify(got) !== JSON.stringify(exp)){
+    console.error(`TEST FAIL: ${name} => got ${JSON.stringify(got)} exp ${JSON.stringify(exp)}`);
+  } else {
+    console.log(`TEST OK: ${name}`);
+  }
+}
 
-    // ==========================
-    // Init
-    // ==========================
-    window.addEventListener('error', (ev)=>{
-      try{ state.erroCarregamento = `Erro de script: ${ev.message || ev.error}`; render(); }catch(_){/* noop */}
-    }, { once: false });
-    document.getElementById("year").textContent = new Date().getFullYear();
-    setInterval(tick, 1000);
-    restoreDatasetsFromCache();
-    render();
-    // Se estiver em HTTPS e não estiver em modo offline, sincroniza automaticamente
-    if (location.protocol === 'https:' && !state.settings.offline) {
-      loadAllDatasets();
-    }
+export function runTests(){
+  // addMin rollover
+  assertEq("addMin 23:50 + 15", addMin({h:23,m:50}, 15), {h:0, m:5});
+  // diffMin across midnight
+  assertEq("diffMin 23:50→00:05", diffMin({h:23,m:50},{h:0,m:5}), 15);
+  // minToHHMM
+  assertEq("minToHHMM 125", minToHHMM(125), "02:05");
+  // minToTenthsTrunc (trunca para 1 casa)
+  assertEq("minToTenthsTrunc 110", minToTenthsTrunc(110), "1.8");
+  // aliasCodigo NV->NAV
+  assertEq("aliasCodigo NV-01", aliasCodigo("NV-01"), "NAV-01");
+  // HMSelect onChange HH/MM
+  const base = {h:10,m:20};
+  assertEq("toStr base", toStr(base), "10:20");
+  assertEq("addMin +30", addMin(base,30), {h:10,m:50});
+}
 
-    // Testes rápidos (console) — não alterar os existentes
-    console.assert(diffHMtoMinutes('10:00','11:30')===90, '10:00-11:30=90');
-    console.assert(minutesToHHMM(110)==='01:50', '110->01:50');
-    console.assert(minutesToDecimalTenthsStr(110)==='1,8','110->1,8h');
-    console.assert(minutesToDecimalTenthsStr(63)==='1,0','63->1,0h (trunc)');
-    console.assert(addMinutesZulu('23:50',20)==='00:10','rollover ok');
-
-    // Testes adicionais
-    console.assert(diffHMtoMinutes('23:50','00:10')===20, 'overnight 23:50-00:10=20');
-    console.assert(diffHMtoMinutes('00:00','00:00')===0, '00:00-00:00=0');
-    console.assert(minutesToHHMM(0)==='00:00','0->00:00');
-    console.assert(minutesToDecimalTenthsStr(5)==='0,0','5min->0,0h (trunc)');
-    console.assert(minutesToDecimalTenthsStr(6)==='0,1','6min->0,1h');
-    console.assert(normalizeHeader('Códigó / Missão 1')==='codigomissao1','normalizeHeader diacríticos e símbolos');
-  </script>
-</body>
-</html>
+// Execute os testes automaticamente em dev
+if (typeof window !== 'undefined') {
+  try { runTests(); } catch (e) { console.error(e); }
+}
